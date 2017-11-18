@@ -18,6 +18,9 @@ public:
 	*/
 	bool leftEdgeConnected;
 
+    // Id of this object
+    int id;
+
 	/**
 	* Constructs a empty instance of a Object3D.
 	*/
@@ -27,7 +30,7 @@ public:
 	* Constructs a instance of Object3D based on a point cloud.
 	* @param cluster point cloud representation of the object
 	*/
-	explicit Object3D(cv::Mat cluster);
+	explicit Object3D(cv::Mat cluster, int id=0);
 	Hand getHand();
 	Plane getPlane();
 	cv::Mat getShape();

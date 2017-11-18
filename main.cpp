@@ -1,4 +1,5 @@
-#define PROFILING
+/* modified OpenARK to generate test data for hand tracking
+   (minimally changed to ensure data format is same as what OpenARK receives)*/
 
 // C++ Libraries
 #include <stdio.h>
@@ -23,14 +24,12 @@
 #include "Plane.h"
 #include "Calibration.h"
 #include "Util.h"
-#include "UDPSender.h"
 #include "Object3D.h"
 #include "StreamingAverager.h"
 
 using namespace cv;
 
 int main() {
-    auto starttime = clock();
     DepthCamera * camera = nullptr;
 
 #ifdef PMDSDK_ENABLED
@@ -50,9 +49,10 @@ int main() {
     }
 #endif
 
+    // unique ID for test case
+    int outputID = 0;
 
     //RGBCamera *cam = new Webcam(1);
-    int frame = 0;
     //Calibration::XYZToUnity(*pmd, 4, 4, 3);
     FileStorage fs;
     fs.open("RT_Transform.txt", FileStorage::READ);
@@ -63,198 +63,78 @@ int main() {
 
     fs.release();
 
-    auto u = UDPSender();
     //namedWindow("Results", CV_WINDOW_NORMAL);
 
-    auto handAverager = StreamingAverager(4, 0.1);
-    auto paleeteAverager = StreamingAverager(6, 0.05);
+    //auto handAverager = StreamingAverager(4, 0.1);
+    //auto paleeteAverager = StreamingAverager(6, 0.05);
 
-#ifdef PROFILING
-    // Profiling code
+    printf("Welcome to the OpenARK Object Identification Test Generator.\n(c) Alex Yu 2017\nPlease enter starting test number: ");
 
-    // cycle count
-    int profCycles = 0;
+    scanf("%d", &outputID);
 
-    // set starting time
-    clock_t lastTime = clock(), delta, totalTime = 0;
+    int startingID = outputID;
 
-    // names of profiling categories, change/add as need
-    char* profCategories[] = { "Update", "Denoise", "Clustering", "Hand Identification", "Other" };
-    clock_t profTimes[sizeof profCategories / sizeof profCategories[0]];
+    printf("\nPress space to start/stop recording. Press q on window to exit.\n");
 
-    // set all times to 0 initially
-    memset(profTimes, 0, sizeof profTimes);
-#endif
+    namedWindow("OpenARK Object Identification Test Generator");
+    
+    bool recording = false;
 
+    // record data
     while (true)
     {
         camera->update();
 
-#ifdef PROFILING
-        ++profCycles;
-        delta = clock() - lastTime; profTimes[0] += delta; totalTime += delta; lastTime += delta;
-#endif
-
         // Loading image from sensor
         camera->removeNoise();
 
-#ifdef PROFILING
-        delta = clock() - lastTime; profTimes[1] += delta; totalTime += delta; lastTime += delta;
-#endif
-
         if (camera->badInput) {
             waitKey(10);
-            #ifdef PROFILING
-                lastTime = clock();
-            #endif
             continue;
         }
 
-        // Classifying objects in the scene
-        camera->computeClusters(0.667, 500, 10);
-        auto clusters = camera->getClusters();
-        std::vector<Object3D> objects;
-        auto handObjectIndex = -1, planeObjectIndex = -1;
+        if (recording) {
+            // cluster & classifying objects in the scene
+            camera->computeClusters(0.667, 750, 15);
+            auto clusters = camera->getClusters();
 
-#ifdef PROFILING
-        delta = clock() - lastTime; profTimes[2] += delta; totalTime += delta; lastTime += delta;
-#endif
-
-        for (auto i = 0; i < clusters.size(); i++) {
-            auto obj = Object3D(clusters[i].clone());
-            if (obj.hasHand) {
-                handObjectIndex = i;
+            for (auto i = 0; i < clusters.size(); i++) {
+                Object3D(clusters[i].clone(), outputID++);
             }
 
-            if (obj.hasPlane) {
-                planeObjectIndex = i;
+
+            if (outputID && outputID % 20 == 0) {
+                printf("Finished generating %d cases.\n", outputID);
             }
-            objects.push_back(obj);
         }
 
-#ifdef PROFILING
-        delta = clock() - lastTime; profTimes[3] += delta; totalTime += delta; lastTime += delta;
-#endif
+        cv::Mat visual = camera->getXYZMap().clone();
 
-        // Interpret the relationship between the objects
-        auto clicked = false, paletteFound = false;
-        Object3D handObject, planeObject;
-        Point paletteCenter(-1. - 1);
-        Mat mask = Mat::zeros(camera->getXYZMap().rows, camera->getXYZMap().cols, CV_8UC1);
-        if (planeObjectIndex != -1 && handObjectIndex != -1) {
-            planeObject = objects[planeObjectIndex];
-            handObject = objects[handObjectIndex];
-
-            clicked = handObject.getHand().touchObject(planeObject.getPlane().getPlaneEquation(), planeObject.getPlane().R_SQUARED_DISTANCE_THRESHOLD * 5);
-            //auto scene = Visualizer::visualizePlaneRegression(camera->getXYZMap(), planeObject.getPlane().getPlaneEquation(), planeObject.getPlane().R_SQUARED_DISTANCE_THRESHOLD, clicked);
-            //scene = Visualizer::visualizeHand(scene, handObject.getHand().pointer_finger_ij, handObject.getHand().shape_centroid_ij);
-            if (planeObject.leftEdgeConnected) {
-                Visualizer::visualizePlanePoints(mask, planeObject.getPlane().getPlaneIndicies());
-                auto m = moments(mask, false);
-                paletteCenter = Point(m.m10 / m.m00, m.m01 / m.m00);
-                //circle(scene, paletteCenter, 2, Scalar(0, 0, 255), 2);
-                paletteFound = true;
-            }
-            //namedWindow("Results", CV_WINDOW_AUTOSIZE);
-            //imshow("Results", scene);
-        }
-        else if (handObjectIndex != -1) {
-            handObject = objects[handObjectIndex];
-            //cv::imshow("Results", Visualizer::visualizeHand(pmd->getXYZMap(), handObject.getHand().pointer_finger_ij, handObject.getHand().shape_centroid_ij));
-        }
-        else if (planeObjectIndex != -1) {
-            planeObject = objects[planeObjectIndex];
-            //auto scene = Visualizer::visualizePlaneRegression(camera->getXYZMap(), planeObject.getPlane().getPlaneEquation(), planeObject.getPlane().R_SQUARED_DISTANCE_THRESHOLD, clicked);
-            if (planeObject.leftEdgeConnected) {
-                Visualizer::visualizePlanePoints(mask, planeObject.getPlane().getPlaneIndicies());
-                auto m = moments(mask, false);
-                paletteCenter = Point(m.m10 / m.m00, m.m01 / m.m00);
-                //circle(scene, paletteCenter, 2, Scalar(0, 0, 255), 2);
-                paletteFound = true;
-            }
-            //namedWindow("Results", CV_WINDOW_AUTOSIZE);
-            //imshow("Results", scene);
+        if (visual.cols == 0) {
+            visual = cv::Mat::zeros(640, 480, CV_8UC3);
         }
 
-        // Organize the data and send to game engine
-        std::string handX = "-", handY = "-", handZ = "-";
-        std::string paletteX = "-", paletteY = "-", paletteZ = "-";
-        std::string clickStatus = "2";
-        std::string num_fingers = "0";
-        if (handObjectIndex != -1) {
-            auto handPos = handAverager.addDataPoint(objects[handObjectIndex].getHand().fingers_xyz[0]);
-            //float hand_pt[3] = { objects[handObjectIndex].getHand().pointer_finger_xyz[0], objects[handObjectIndex].getHand().pointer_finger_xyz[1], objects[handObjectIndex].getHand().pointer_finger_xyz[2]};
-            double hand_pt[3] = { handPos[0], handPos[1], handPos[2] };
-            auto hand_mat = Mat(3, 1, CV_32FC1, &hand_pt);
-            //hand_mat = r*hand_mat + t;
-            handX = std::to_string(hand_mat.at<float>(0, 0));
-            handY = std::to_string(hand_mat.at<float>(1, 0));
-            handZ = std::to_string(hand_mat.at<float>(2, 0));
-            num_fingers = std::to_string(objects[handObjectIndex].getHand().fingers_xyz.size());
+        if (recording) {
+            cv::putText(visual, "Recording", cv::Point(15, 25), 0, 0.5, cv::Scalar(60, 255, 50));
         }
         else {
-            handAverager.addEmptyPoint();
-        }
-        if (paletteFound) {
-            auto pt = paleeteAverager.addDataPoint(camera->getXYZMap().at<Vec3f>(paletteCenter.y, paletteCenter.x));
-            float palette_pt[3] = { pt[0], pt[1], pt[2] };
-            auto palette_mat = Mat(3, 1, CV_32FC1, &palette_pt);
-            //palette_mat = r*palette_mat + t;
-            paletteX = std::to_string(palette_mat.at<float>(0, 0));
-            paletteY = std::to_string(palette_mat.at<float>(1, 0));
-            paletteZ = std::to_string(palette_mat.at<float>(2, 0));
-        }
-        else {
-            paleeteAverager.addEmptyPoint();
-        }
-        if (clicked) {
-            clickStatus = "1";
+            cv::putText(visual, "Paused (Press space to record)", cv::Point(15, 25), 0, 0.5, cv::Scalar(50, 50, 255));
         }
 
-        std::string tempS = "";
-        tempS = handX + "%" + handY + "%" + handZ + "%" + paletteX + "%" + paletteY + "%" + paletteZ + "%" + clickStatus + "%" + num_fingers;
-        u.send(tempS);
+        cv::putText(visual, std::to_string(outputID), cv::Point(visual.cols- 30, 25), 0, 0.5, cv::Scalar(255, 255, 255));
 
-#ifdef PROFILING
-        delta = clock() - lastTime; profTimes[4] += delta; totalTime += delta; lastTime += delta;
-#endif
+        imshow("OpenARK Object Identification Test Generator", visual);
 
-        /**** Start: Write Frames to File ****/
-        //std::string filename = "img" + std::to_string(frame) + ".yml";
-        //pmd->writeImage(filename);
-        //std::cout << filename << std::endl;
         /**** End: Write Frames to File ****/
 
         /**** Start: Loop Break Condition ****/
         auto c = waitKey(1);
+        if (c == ' ') recording = !recording;
         if (c == 'q' || c == 'Q' || c == 27) {
             break;
         }
         /**** End: Loop Break Condition ****/
-        frame++;
-
-#ifdef PROFILING
-        // get profiling report
-        if (c == 't' || c == 'T') {
-            float profDelay = (float)totalTime / profCycles / CLOCKS_PER_SEC;
-            printf("--PROFILING REPORT--\nTotal: %d\nDelay: %f s\nFPS: %f\n\n",
-                totalTime, profDelay, 1/profDelay);
-            for (int i = 0; i < sizeof profTimes / sizeof profTimes[0]; ++i) {
-                printf("%s: %d (%f%%)\n", profCategories[i], profTimes[i], (float)profTimes[i] / totalTime * 100);
-            }
-            printf("--END OF REPORT--\n\n");
-        }
-        // reset time
-        else if (c == 'r' || c == 'R') {
-            totalTime = profCycles = 0;
-            // clear all times
-            memset(profTimes, 0, sizeof profTimes);
-            printf("Profiling times reset.\n");
-        }
-        lastTime = clock();
-#endif
     }
-
 
     camera->destroyInstance();
     destroyAllWindows();

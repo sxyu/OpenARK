@@ -1,7 +1,7 @@
 #include "Visualizer.h"
 
 
-pcl::visualization::PCLVisualizer Visualizer::viewer = pcl::visualization::PCLVisualizer("Point Cloud");
+//pcl::visualization::PCLVisualizer Visualizer::viewer = pcl::visualization::PCLVisualizer("Point Cloud");
 
 /***
 Maps matrix values to [0, 255] for viewing
@@ -52,12 +52,12 @@ cv::Mat Visualizer::visualizeHand(cv::Mat xyzMap, cv::Point2i finger, cv::Point2
 
 void Visualizer::visualizeCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud)
 {
-	viewer.setBackgroundColor(0, 0, 0);
+	//viewer.setBackgroundColor(0, 0, 0);
 
-	if (!viewer.updatePointCloud(cloud))
-		viewer.addPointCloud(cloud);
+	//if (!viewer.updatePointCloud(cloud))
+	//	viewer.addPointCloud(cloud);
 
-	viewer.spinOnce();
+	//viewer.spinOnce();
 }
 
 cv::Mat Visualizer::visualizePlaneRegression(cv::Mat &input_mat, std::vector<double> &equation, const double threshold, bool clicked)
@@ -179,10 +179,10 @@ void Visualizer::visulizePolygonMesh(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud)
 	gp3.setSearchMethod(tree2);
 	gp3.reconstruct(triangles);
 
-	viewer.setBackgroundColor(0, 0, 0);
+	//viewer.setBackgroundColor(0, 0, 0);
 
-	if (!viewer.updatePolygonMesh(triangles))
-		viewer.addPolygonMesh(triangles);
+	//if (!viewer.updatePolygonMesh(triangles))
+	//	viewer.addPolygonMesh(triangles);
 
-	viewer.spinOnce();
+	//viewer.spinOnce();
 }

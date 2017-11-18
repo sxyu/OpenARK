@@ -7,7 +7,7 @@ Object3D::Object3D()
 
 }
 
-Object3D::Object3D(cv::Mat cluster) {
+Object3D::Object3D(cv::Mat cluster, int id) {
     // Step 1: Initialize variables
     rightEdgeConnected = false;
     leftEdgeConnected = false;
@@ -15,18 +15,22 @@ Object3D::Object3D(cv::Mat cluster) {
     hasPlane = false;
     hasShape = false;
 
+    this->id = id;
+
     // Step 1: determine whether cluster is hand
 
     //if (checkForHand(cluster, 0.005, 0.25)) { //original
     //if (checkForHand(cluster, 0.005, 0.4)) { //original 2
-    if (checkForHand(cluster, 0.05, 0.7, 0.08)) {
-        hand = Hand(cluster, 50, 30);
 
-        hasHand = true;
+    // ignore, create hand anyway
+    if (true || checkForHand(cluster, 0.05, 0.7, 0.08)) {
+        hand = Hand(cluster, 50, 30, id);
+
+        //hasHand = true;
         //std::string name = "hand" + std::to_string(id);
 
-        cv::namedWindow("hand", cv::WINDOW_AUTOSIZE);
-        cv::imshow("hand", cluster);
+        //cv::namedWindow("hand", cv::WINDOW_AUTOSIZE);
+        //cv::imshow("hand", cluster);
 
         return;
     }
@@ -102,9 +106,6 @@ double Object3D::centroidCircleSweep(cv::Mat cluster, double distance) const
     cv::Point center(m.m10 / m.m00, m.m01 / m.m00);
 
     // Step 2: Find the radius (pixels) that correspond to distance (meters)
-
-    // NOTE: now computes the radius based on median distance (instead of estimating distance per pixel at centroid)
-    //       it. talk to me (Alex) if this causes any problems.
 
     std::vector<float> pointsZ;
     pointsZ.reserve(cluster.rows * cluster.cols / 4);

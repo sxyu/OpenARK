@@ -44,7 +44,7 @@ SR300Camera::~SR300Camera() {};
 void SR300Camera::destroyInstance()
 {
     printf("closing sensor\n");
-    sm->Release();
+    //sm->Release();
     sm->Close();
     printf("sensor closed\n");
 }
@@ -88,13 +88,12 @@ void SR300Camera::fillInZCoords()
     cv::Mat img;
     Converter::ConvertPXCImageToOpenCVMat(depthMap, depthImage, &img);
 
-    cv::imshow("Depth Image by OpenARK", Visualizer::visualizeDepthMap(img));
-
+    //cv::imshow("Depth Image by OpenARK", Visualizer::visualizeDepthMap(img));
     auto imgInfo = depthMap->QueryInfo();
     depth_width = imgInfo.width;
     depth_height = imgInfo.height;
 
-    int num_pixels = depth_width * depth_height;
+    auto num_pixels = depth_width * depth_height;
     auto projection = device->CreateProjection();
     auto pos3D = new Intel::RealSense::Point3DF32[num_pixels];
 

@@ -16,13 +16,16 @@ public:
     */
     Hand();
 
+    // ID of this hand object
+    int id;
+
     /**
     * Constructs a hand object based on point cloud and constraints.
     * @param xyzMap Input point cloud containing only the hand (nothing else can be in this point cluod)
     * @param angle_treshhold Sharpest allowable angle formed by finger tip and neighboring defects
     * @param cluster_thresh Maximum allowable distance between two finger tips
     */
-    Hand(cv::Mat xyzMap, float angle_treshhold, int cluster_thresh = 30);
+    Hand(cv::Mat xyzMap, float angle_treshhold, int cluster_thresh = 30, int id = 0);
 
     /**
     * Deconstructor for the hand object
