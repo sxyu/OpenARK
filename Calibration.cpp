@@ -1,4 +1,6 @@
+#include "stdafx.h"
 #include "Calibration.h"
+#include "Util.h"
 
 
 void Calibration::XYZToUnity(DepthCamera& depth_cam, int num_boards, int board_w, int board_h)
@@ -22,8 +24,7 @@ void Calibration::XYZToUnity(DepthCamera& depth_cam, int num_boards, int board_w
 		cornersAmp.clear();
 		cornersXYZ.clear();
 		auto found1 = false;
-		depth_cam.update();
-		depth_cam.removeNoise();
+		depth_cam.nextFrame();
 		auto xyzMap = depth_cam.getXYZMap();
 
 		cv::Mat ampGray;
@@ -68,7 +69,7 @@ void Calibration::XYZToUnity(DepthCamera& depth_cam, int num_boards, int board_w
 			{
 				success++;
 				XYZ_points.push_back(cornersXYZ);
-				printf("%d points recorded!\n", cornersXYZ.size());
+				printf("%I64u points recorded!\n", cornersXYZ.size());
 			}
 		}
 
