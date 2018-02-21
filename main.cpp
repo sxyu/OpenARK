@@ -101,7 +101,7 @@ int main(int argc, char** argv) {
         }
 
         // cluster & classifying objects in the scene
-        const ark::Vec_Hand & hands = camera->getFrameHands(&params);
+        const std::vector<ark::HandPtr> & hands = camera->getFrameHands(&params);
 
         for (uint i = 0; i < hands.size(); i++) {
             auto hand = hands[i];
