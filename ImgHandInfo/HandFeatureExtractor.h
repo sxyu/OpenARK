@@ -1,6 +1,8 @@
 #pragma once
 
-#define PI 3.1415926535898
+#ifndef PI
+    #define PI 3.1415926535898
+#endif
 
 #include "core.h"
 

@@ -1,5 +1,5 @@
-#include "HandClassifier.h"
 #include "core.h"
+#include "HandClassifier.h"
 
 using namespace ark::classifier;
 
@@ -11,7 +11,7 @@ const char * savePath = "D:\\Programming\\3VR\\OpenARK\\svm\\";
 int main(void) {
     int ihyperparams[5];
 
-    std::string names[] = { "gamma", "coef0", "C", "eps", "p" };
+    const std::string names[] = { "gamma", "coef0", "C", "eps", "p" };
 
     cv::namedWindow("SVM");
     for (unsigned i = 0; i < 5; ++i) {
@@ -36,7 +36,7 @@ int main(void) {
 
     double hyperparams[5];
 
-    boost::shared_ptr<HandClassifier> hc = boost::make_shared<SVMHandValidator>(savePath);
+    boost::shared_ptr<Classifier> hc = boost::make_shared<SVMHandValidator>(savePath);
 
     while (true) {
         std::cout << "OpenARK SVM training tool: Press q / ESC to quit,\nl to load last saved configuration, 0-9 to run benchmark, or t to try training again...\n";

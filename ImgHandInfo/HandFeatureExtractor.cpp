@@ -68,7 +68,7 @@ namespace classifier {
             params.handRequireEdgeConnected = false;
 
             ark::Hand hand(depth, &params);
-            return ark::classifier::HandClassifier::extractShapeFeatures(hand, hand.getDepthMap());
+            return ark::classifier::SVMHandValidator::extractFeatures(hand, hand.getDepthMap());
         }
 
         std::vector<double> extractHandFeatures(std::string testCaseName, std::string dataDir, std::string depthPath) {
