@@ -110,12 +110,12 @@ namespace ark {
          * Begin capturing frames continuously from this camera on a parallel thread, 
          * capped at a certain maximum FPS.
          * WARNING: throws an error if capture already started.
-         * @param fps_cap maximum FPS of capture.
+         * @param fps_cap maximum FPS of capture (-1 to disable)
          * @param removeNoise if true, performs noise removal on the depth image after retrieving it
          * @see endCapture
          * @see isCapturing
          */
-        void beginCapture(int fps_cap = 60, bool remove_noise = true);
+        void beginCapture(int fps_cap = -1, bool remove_noise = true);
 
         /**
          * Stop capturing from this camera.
@@ -305,8 +305,9 @@ namespace ark {
         /** 
          * helper function for computing the normal map of the current depth image
          * @param params parameters
+         * @param xyz_map xyz map to use
          */
-        void computeNormalMap(const ObjectParams * params = nullptr);
+        void computeNormalMap(const ObjectParams * params = nullptr, const cv::Mat * xyz_map = nullptr);
 
         /**
          * Removes noise from an XYZMap based on confidence provided in the AmpMap and FlagMap.
@@ -328,36 +329,12 @@ namespace ark {
          * @param[out] output_equations vector to be filled with equations of planes (in the form ax + by - z + c = 0)
          * @param[out] output_points vector to be filled with vectors of ij coordinate points on planes
          * @param[out] output_points_xyz vector to be filled with vectors of xyz coordinate points on planes
-         * @param[in] normal_map the frame's normal map (by default, uses the camera's getNormalMap)
-         * @param[in] fill_mask optional mask for limiting which points may be used in plane detection
-         * @param[in] fill_color color on fill_mask to allow detection
          * @param[in] params plane detection parameters
+         * @param[in] normal_map the frame's normal map (by default, uses the camera's getNormalMap; MUST be same size as camera frame)
          */
         void detectPlaneHelper(const cv::Mat & xyz_map,  std::vector<Vec3f> & output_equations,
             std::vector<VecP2iPtr> & output_points, std::vector<VecV3fPtr> & output_points_xyz,
-            const ObjectParams * params = nullptr, const cv::Mat * normal_map = nullptr, 
-            const cv::Mat * fill_mask = nullptr, uchar fill_color = 0);
-
-        /**
-         * helper function for the equations of all planes in a frame given its xyz and normal map s.
-         * @param[in] xyz_map the frame's xyz map
-         * @param[out] output_hands vector to push detected hands to
-         * @param[in] params hand detection parameters
-         * @param[in, out] best_hand_dist optional float value for storing the distance to the
-         *                                closest hand
-         * @param[out] pending_mask optional mask to record "pending" clusters 
-         *             (clusters that have not been eliminated but are not hands),
-         *             points in the first cluster are given value 255, second 254, etc.
-         * @param[out] pending_count optional output for the number of pending clusters
-         * @param[in] fill_mask optional mask for limiting which points may be used in hand detection
-         * @param[in] fill_color color on fill_mask to allow detection
-         * @return shared pointer to current best Hand instance.
-         */
-        boost::shared_ptr<Hand> detectHandHelper(const cv::Mat & xyz_map,
-            std::vector<HandPtr> & output_hands,
-            const ObjectParams * params = nullptr, float * best_hand_dist = nullptr,
-            cv::Mat * pending_mask = nullptr, uchar * pending_count = nullptr,
-            const cv::Mat * fill_mask = nullptr, uchar fill_color = 0);
+            const ObjectParams * params = nullptr, const cv::Mat * normal_map = nullptr);
 
         /** interrupt for immediately terminating the capturing thread */
         bool captureInterrupt = true;

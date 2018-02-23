@@ -272,29 +272,40 @@ namespace ark {
             }
         }
 
-        void removePlane(cv::Mat & xyz_map, const Vec3f & plane_equation,
+        template <class T>
+        void removePlane(const cv::Mat & ref_cloud, cv::Mat & image, const Vec3f & plane_equation,
             float threshold, cv::Mat * mask, uchar mask_color)
         {
-            for (int row = 0; row < xyz_map.rows; ++row) {
-                Vec3f * ptr = xyz_map.ptr<Vec3f>(row);
-                uchar * maskPtr;
-                if (mask != nullptr) maskPtr = mask->ptr<uchar>(row);
+            const Vec3f * refPtr;
+            T * imgPtr;
+            uchar * maskPtr;
 
-                for (int col = 0; col < xyz_map.cols; ++col) {
-                    if (mask != nullptr && maskPtr[col] != mask_color) {
+            for (int row = 0; row < ref_cloud.rows; ++row) {
+                refPtr = ref_cloud.ptr<Vec3f>(row);
+                imgPtr = image.ptr<T>(row);
+                if (mask) maskPtr = mask->ptr<uchar>(row);
+
+                for (int col = 0; col < ref_cloud.cols; ++col) {
+                    if (mask && maskPtr[col] != mask_color) {
                         continue;
                     }
 
-                    Vec3f & xyz = ptr[col];
-                    if (pointPlaneNorm(xyz, plane_equation) < threshold) {
+                    if (pointPlaneNorm(refPtr[col] , plane_equation) < threshold) {
                         // found nearby plane, remove point (i.e. set to 0)
-                        xyz = 0;
+                        imgPtr[col] = 0;
                     }
                 }
             }
         }
 
-        Vec3f averageAroundPoint(cv::Mat xyz_map, Point2i pt, int radius)
+        template void removePlane<uchar>(const cv::Mat & ref_cloud, cv::Mat & image, const Vec3f & plane_equation, float threshold, cv::Mat * mask, uchar mask_color);
+        template void removePlane<ushort>(const cv::Mat & ref_cloud, cv::Mat & image, const Vec3f & plane_equation, float threshold, cv::Mat * mask, uchar mask_color);
+        template void removePlane<uint>(const cv::Mat & ref_cloud, cv::Mat & image, const Vec3f & plane_equation, float threshold, cv::Mat * mask, uchar mask_color);
+        template void removePlane<int>(const cv::Mat & ref_cloud, cv::Mat & image, const Vec3f & plane_equation, float threshold, cv::Mat * mask, uchar mask_color);
+        template void removePlane<float>(const cv::Mat & ref_cloud, cv::Mat & image, const Vec3f & plane_equation, float threshold, cv::Mat * mask, uchar mask_color);
+        template void removePlane<Vec3f>(const cv::Mat & ref_cloud, cv::Mat & image, const Vec3f & plane_equation, float threshold, cv::Mat * mask, uchar mask_color);
+
+        Vec3f averageAroundPoint(const cv::Mat & xyz_map, Point2i pt, int radius)
         {
             int count = 0;
             Vec3f average(0, 0, 0);
@@ -303,8 +314,7 @@ namespace ark {
             {
                 if (r >= xyz_map.rows) break;
                
-                Vec3f * ptr = xyz_map.ptr<Vec3f>(r);
-
+                const Vec3f * ptr = xyz_map.ptr<Vec3f>(r);
                 for (int c = std::max(0, pt.x - radius); c <= pt.x + radius; ++c)
                 {
                     if (c >= xyz_map.cols) break;
@@ -322,56 +332,30 @@ namespace ark {
             return average / count;
         }
 
-        Vec3f normalAroundPoint(cv::Mat xyz_map, Point2i pt, int radius)
+        Vec3f normalAroundPoint(const cv::Mat & xyz_map, Point2i pt, int radius)
         {
-            Vec3f center = xyz_map.at<Vec3f>(pt);
+            const Vec3f & center = xyz_map.at<Vec3f>(pt);
             if (center[2] == 0) return 0;
 
+            Point2i tlp (std::max(pt.x - radius, 0), std::max(pt.y - radius, 0));
+            Point2i trp (std::min(pt.x + radius, xyz_map.cols - 1),
+                         std::max(pt.y - radius, 0));
+            Point2i blp (std::max(pt.x - radius, 0),
+                         std::min(pt.y + radius, xyz_map.rows - 1));
+            Point2i brp (std::min(pt.x + radius, xyz_map.cols - 1),
+                         std::min(pt.y + radius, xyz_map.rows - 1));
+
+            const Vec3f & tl = xyz_map.at<Vec3f>(tlp);
+            const Vec3f & tr = xyz_map.at<Vec3f>(trp);
+            const Vec3f & bl = xyz_map.at<Vec3f>(blp);
+            const Vec3f & br = xyz_map.at<Vec3f>(brp);
+
             bool empty = true;
-            Vec3f average(0, 0, 0);
-
-            for (int r = -radius; r <= radius; r += radius)
-            {
-                int rr = r + pt.y;
-                if (rr < 0 || rr >= xyz_map.rows) continue;
-               
-                Vec3f * ptr = xyz_map.ptr<Vec3f>(rr);
-
-                for (int c = -radius; c <= radius; c += radius)
-                {
-                    int cc = c + pt.x;
-                    if ((!r && !c) || cc < 0 || cc >= xyz_map.cols) continue;
-
-                    Vec3f a = ptr[cc], b;
-                    if (a[2] <= 0) continue;
-
-                    // pick second point ninety degrees CCW
-                    int r2 = pt.y + c, c2 = pt.x - r;
-                    if (r2 < 0 || r2 >= xyz_map.rows || c2 < 0 || c2 >= xyz_map.cols ||
-                        (b = xyz_map.at<Vec3f>(r2, c2))[2] == 0) {
-                        // if out of bounds, try ninety degrees CW
-
-                        r2 = pt.y - c; c2 = pt.x + r;
-
-                        // if still doesn't work, don't use this point
-                        if (r2 < 0 || r2 >= xyz_map.rows || c2 < 0 || c2 >= xyz_map.cols || 
-                            (b = xyz_map.at<Vec3f>(r2, c2))[2] == 0) 
-                            continue;
-                    }
-
-                    // take cross product of the vectors
-                    Vec3f cross = (a - center).cross(b - center);
-
-                    // orient towards viewer
-                    if (cross[2] > 0) cross = -cross;
-
-                    // add to total
-                    average += cross;
-                    empty = false;
-                }
-            }
-
-            if (empty) return 0;
+            Vec3f average = 
+                (tl - center).cross(tr - center) +
+                (tr - center).cross(br - center) +
+                (br - center).cross(bl - center) +
+                (bl - center).cross(tl - center);
 
             // divide to get average normal, then normalize
             average = cv::normalize(average);
@@ -773,133 +757,137 @@ namespace ark {
          * Performs floodfill on ordered point cloud
          */
         int floodFill(const cv::Mat & xyz_map, const Point2i & seed,
-            float max_distance, std::vector <Point2i> * output_ij_points,
+            float thresh, std::vector <Point2i> * output_ij_points,
             std::vector <Vec3f> * output_xyz_points, cv::Mat * output_mask,
-            int interval, int interval2, const cv::Mat * access_mask, uchar access_mask_color, 
-            cv::Mat * not_visited)
+            int inv1, int inv2, float inv2_thresh, cv::Mat * color)
         {
-            // if access mask disallows seed, stop
-            if (access_mask && access_mask->at<uchar>(seed) != access_mask_color) return 0;
-
-            /*
-            Listing of adjacent points to go to in each floodfill step
-            */
-            std::vector<Point2i> nxtPoints
-            {
-                Point2i(-interval, 0), Point2i(0, -interval),
-                Point2i(0, interval), Point2i(interval, 0),
-            };
-
-            if (interval2 > 0) {
-                nxtPoints.push_back(Point2i(-interval2, 0));
-                nxtPoints.push_back(Point2i(0, -interval2));
-                nxtPoints.push_back(Point2i(0, interval2));
-                nxtPoints.push_back(Point2i(interval2, 0));
-            }
-            
             // true if temporary 'visited' matrix allocated (we'll need to delete it after)
-            bool tempVisMat = (not_visited == nullptr);
+            bool tempVisMat = (color == nullptr);
 
             // create 'visited' matrix
             if (tempVisMat) {
-                not_visited = new cv::Mat(xyz_map.size(), CV_8U);
-                *not_visited = cv::Scalar(1);
+                color = new cv::Mat(xyz_map.size(), CV_8U);
+                *color = cv::Scalar(255);
             }
 
-            // stack for storing the 2d and 3d points
-            static std::vector<std::pair<Point2i, Vec3f> > stk;
+            color->at<uchar>(seed) = 1;
+
+            // stack for storing the 2d points
+            static std::vector<Point2i> stk;
 
             const int R = xyz_map.rows, C = xyz_map.cols;
 
             // permanently allocate memory for our stack
-            if (stk.size() < R * C) {
-                stk.resize(R * C);
+            if (stk.size() < R * C * 2) {
+                stk.resize(R * C * 2);
             }
 
-            // use square of distance to save computations
-            max_distance *= max_distance;
-
+            thresh *= thresh; // use square of distance to save computations
+            float max_distance2 = inv2_thresh * inv2_thresh; // for interval2
 
             // add seed to stack
-            stk[0] = std::make_pair(seed, xyz_map.at<Vec3f>(seed));
+            stk[0] = seed;
 
-            // pointer to top (first empty index) of stack
-            int stkPtr = 1;
-            // counts the total number of points visited
-            int total = 0;
+            int stkSize = 1, total = 0, nNext;
 
-            // begin DFS
-            while (stkPtr > 0) {
+            // stores next points
+            std::array<Point2i, 4> nextPts;
+
+            Point2i pt;
+            const Vec3f * xyzPtr;
+            Vec3f * oPtr;
+            uchar * visPtr;
+            bool sw;
+
+            // begin DFS / scanline hybrid flood fill
+            while (stkSize > 0) {
                 // pop current point from stack
-                Point2i pt = stk[--stkPtr].first;
-                Vec3f & xyz = stk[stkPtr].second;
+                pt = stk[--stkSize];
 
-                if (!util::pointInImage(xyz_map, pt)) continue;
-                if (output_mask) output_mask->at<Vec3f>(pt) = Vec3f(xyz);
-                not_visited->at<Vec3f>(pt)[2] = 0;
+                // create pointers to current row for faster access
+                xyzPtr = xyz_map.ptr<Vec3f>(pt.y);
+                visPtr = color->ptr<uchar>(pt.y);
+                if (output_mask) oPtr = output_mask->ptr<Vec3f>(pt.y);;
 
-                // put point into the output vectors if provided
-                if (output_ij_points) {
-                    if (output_ij_points->size() <= total) {
-                        output_ij_points->push_back(pt);
-                    }
-                    else {
-                        (*output_ij_points)[total] = pt;
-                    }
-                }
-                if (output_xyz_points) {
-                    (*output_xyz_points)[total] = Vec3f(xyz);
-                }
+                int origX = pt.x;
+                sw = true;
 
-                // increment the total # of points
-                ++total;
+                const Vec3f * xyz;
 
-                // go to each adjacent point
-                for (uint i = 0; i < nxtPoints.size(); ++i) {
-                    Point2i adjPt = pt + nxtPoints[i];
+                while (true) {
+                    // if not visited, visit; otherwise ignore this point and move left/right
+                    if (visPtr[pt.x] > 0) {
+                        xyz = &xyzPtr[pt.x];
 
-                    // stop if outside bound of image
-                    if (!util::pointInImage(xyz_map, adjPt)) continue;
+                        // mark as visited
+                        visPtr[pt.x] = 0;
 
-                    // stop if access mask tells us not to go there
-                    if (access_mask && access_mask->at<uchar>(adjPt) != access_mask_color) continue;
+                        // output this point to mask, etc.
+                        if (output_mask) oPtr[pt.x] = *xyz;
+                        if (output_ij_points) output_ij_points->at(total) = pt;
+                        if (output_xyz_points) output_xyz_points->at(total) = *xyz;
 
-                    // stop if already visited
-                    bool is_visited;
-                    if (not_visited->type() == CV_32FC3) {
-                        is_visited = not_visited->at<Vec3f>(adjPt)[2] == 0;
-                    }
-                    else {
-                        is_visited = not_visited->at<uchar>(adjPt) == 0;
-                    }
-                    if (is_visited) continue;
+                        // increment the total number of points
+                        ++total;
 
-                    const Vec3f & adjXyz = xyz_map.at<Vec3f>(adjPt);
+                        // make a list of adjacent points
+                        nNext = -1;
+                        if (pt.y >= inv1) nextPts[++nNext] = Point2i(pt.x, pt.y - inv1);
+                        if (pt.y < R - inv1) nextPts[++nNext] = Point2i(pt.x, pt.y + inv1);
 
-                    // compute 3D norm
-                    double norm = util::norm(xyz - adjXyz);
-
-                    // scale distance for 'skip' points
-                    if (abs(nxtPoints[i].x + nxtPoints[i].y) > interval)
-                        norm /= 25;
-
-                    // update & go to if point is close enough
-                    if (norm < max_distance) {
-                        stk[stkPtr++] = std::make_pair(adjPt, Vec3f(adjXyz));
-
-                        if (not_visited->type() == CV_32FC3) {
-                            not_visited->at<Vec3f>(adjPt)[2] = 0;
+                        if (inv2 > 0) {
+                            if (pt.y >= inv2) nextPts[++nNext] = Point2i(pt.x, pt.y - inv2);
+                            if (pt.y < R - inv2) nextPts[++nNext] = Point2i(pt.x, pt.y + inv2);
                         }
-                        else {
-                            not_visited->at<uchar>(adjPt) = 0;
+
+                        // go to each adjacent point
+                        for (uint i = 0; i <= nNext; ++i) {
+                            Point2i & adjPt = nextPts[i];
+                            uchar & adjNVis = color->at<uchar>(adjPt);
+
+                            // skip if already visited
+                            if (adjNVis <= 1) continue;
+
+                            // update & push to stack if point is close enough
+                            if (util::norm(*xyz - xyz_map.at<Vec3f>(adjPt)) <
+                                         (i < 2 ? thresh : max_distance2)) {
+                                stk[stkSize++] = adjPt;
+                                adjNVis = 1; // mark 'visiting'
+                            }
+                        }
+
+                    }
+
+                    // scanline
+                    if (sw) {
+                        // go right
+                        pt.x += inv1;
+                        if (pt.x >= C || visPtr[pt.x] == 0 ||
+                            util::norm(*xyz - xyzPtr[pt.x]) >= thresh) {
+                            sw = false;
+
+                            // reset to middle
+                            pt.x = origX;
+                            xyz = &xyzPtr[origX];
+                            continue;
+                        }
+                    }
+
+                    // immediately run when switched
+                    if (!sw) {
+                        // go left
+                        pt.x -= inv1;
+                        if (pt.x < 0 || visPtr[pt.x] == 0 ||
+                            util::norm(*xyz - xyzPtr[pt.x]) >= thresh) {
+                            break;
                         }
                     }
                 }
             }
 
             if (tempVisMat) {
-                delete not_visited;
-                not_visited = nullptr;
+                delete color;
+                color = nullptr;
             }
 
             return total;

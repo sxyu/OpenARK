@@ -111,7 +111,7 @@ namespace ark {
         void removePoints(cv::Mat & img, const std::vector<Point2i> & points);
 
         /**
-         * Remove all points fitting a plane's equation from the given point cloud
+         * Zeros all pixels on 'image' corresponding to points on 'ref_cloud' fitting 'plane_equation'
          * @param [in, out] xyz_map the input point cloud
          * @param [in] plane_equation the equation of the plane
          * @param threshold the thickness of the plane, 
@@ -120,7 +120,8 @@ namespace ark {
          *                         at the correspoinding index
          *                         for a point to be removed from the point cloud
          */
-        void removePlane(cv::Mat & xyz_map, const Vec3f & plane_equation,
+        template <class T>
+        void removePlane(const cv::Mat & ref_cloud, cv::Mat & image, const Vec3f & plane_equation,
                          float threshold, cv::Mat * mask = nullptr, uchar mask_color = 0);
 
         /**
@@ -130,7 +131,7 @@ namespace ark {
         * @param radius number of neighboring points to be used for computing the average
         * @return average (x,y,z) value around the point of interest
         */
-        Vec3f averageAroundPoint(cv::Mat img, Point2i pt, int radius = 5);
+        Vec3f averageAroundPoint(const cv::Mat & img, Point2i pt, int radius = 5);
 
         /**
         * Find the surface normal vector around a point.
@@ -139,7 +140,7 @@ namespace ark {
         * @param radius number of neighboring points to be used for computing the average
         * @return surface normal vector (the one facing viewer) at the point of interest
         */
-        Vec3f normalAroundPoint(cv::Mat img, Point2i pt, int radius = 3);
+        Vec3f normalAroundPoint(const cv::Mat & img, Point2i pt, int radius = 3);
 
         /**
         * Eliminate outliers in a point cloud by considering the 'influence' of each point
@@ -217,7 +218,7 @@ namespace ark {
         Point2i findCentroid(cv::Mat xyz_map);
 
         /**
-         * Performs floodfill on a depth map starting from seed point (x,y).
+         * Performs a single floodfill on a depth map starting from seed point (x,y).
          * @param [in] xyz_map the input point cloud
          * @param seed seed point
          * @param thresh maximum euclidean distance allowed between neighbors
@@ -227,16 +228,13 @@ namespace ark {
                   the points in the component. Existing values on vector will be overwritten & vector expanded on demand (set to NULL to disable) 
          * @param [out] output_mask optional output matrix for storing points visited by the floodfill (set to NULL to disable)
 
-         * @param interval interval to adjacent points (e.g. if 2, adjacent points are (-2, 0), (0, 2), etc.)
-         * @param interval2 additional interval to adjacent points (0 = not used)
-
-         * @param [in] access_mask optional matrix for limiting the points the flood fill is able to visit
-         * @param access_mask_color color on the access_mask that indicates a point should be visited
-
-         * @param [in, out] not_visited a matrix (CV_8U OR CV_32FC3)
-         *             for recording if a point has been visited (so that points are not visited twice).
-         *             Corresponding value on this matrix is set to 0 for visited points.
-         *            By default, allocates a temporary matrix for use during flood fill.
+         * @param interval1 interval to adjacent points (e.g. if 2, adjacent points are (-2, 0), (0, 2), etc.)
+         * @param interval2 additional interval to adjacent points (0 = not used), only works for up/down fill
+         * @param interval2_thresh distance theshold for interval2
+         * @param [in, out] color an auxiliary matrix (CV_8U)
+         *             for recording if a point is being visited (1), has already been visited (0)
+         *             or is not yet visited (255)
+         *             By default, allocates a temporary matrix for use during flood fill.
          * @return number of points in component
          */
         int floodFill(const cv::Mat & xyz_map, const Point2i & seed,
@@ -244,9 +242,8 @@ namespace ark {
             std::vector <Point2i> * output_ij_points = nullptr,
             std::vector <Vec3f> * output_xyz_points = nullptr,
             cv::Mat * output_mask = nullptr,
-            int interval = 1, int interval2 = 0, 
-            const cv::Mat * access_mask = nullptr, uchar access_mask_color = 0, 
-            cv::Mat * not_visited = nullptr);
+            int interval1 = 1, int interval2 = 0, float interval2_dist = 0.05f, 
+            cv::Mat * color = nullptr);
 
         /**
         * Compute the angle in radians 'pointij' is at from the origin, going CCW starting from (0, 1), if y-axis is facing up.
@@ -500,7 +497,7 @@ namespace ark {
           * that has a nonzero value on an xyz map.
           * @param xyz_map the XYZ map (point cloud)
           * @param center the center point
-          * @param angle the direction, specified by an angle CCW from (0, 1), if y-axis is facing up
+          * @param angle the direction, specified by an angle CCW from (0, 1) if y-axis is facing up
           * @param angle_offset the offset angle to be added to angle (default 0.0)
           */
         float radiusInDirection(const cv::Mat & xyz_map, const Point2i & center,
@@ -513,10 +510,9 @@ namespace ark {
         template<class T>
         class PointComparer {
         public:
-            PointComparer(bool reverse = false, bool compare_y_then_x = false) {
-                this->reverse = reverse;
-                this->compare_y_then_x = compare_y_then_x;
-            }
+            PointComparer(bool reverse = false, bool compare_y_then_x = false)
+                : reverse(reverse), compare_y_then_x(compare_y_then_x){ }
+
             // Compare two points. Returns true if a is less than b.
             bool operator()(T a, T b);
         private:

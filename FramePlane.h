@@ -85,19 +85,6 @@ namespace ark {
          * @return euclidean distance
          */
         float distanceToPoint(const Vec3f & point) const;
-
-        /**
-         * Remove all points fitting a plane's equation from the given point cloud
-         * @see util::removePlane
-         * @param [in, out] xyz_map the input point cloud
-         * @param threshold the thickness of the plane, 
-         *        i.e. the maximum distance from the plane to a removed point
-         * @param mask, mask_color optional mask matrix whose value must equal 'mask_color'
-         *                         at the correspoinding index
-         *                         for a point to be removed from the point cloud
-         */
-        void cutFromXYZMap(cv::Mat & xyz_map, float threshold = 0.000075,
-                           cv::Mat * mask = nullptr, uchar mask_color = 0);
     };
 
     /* Shared pointer for FramePlane **/

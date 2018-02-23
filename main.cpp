@@ -52,13 +52,13 @@ int main() {
     srand(time(NULL));
 
     // store frame & FPS information
-    int frame = 0;
-    clock_t cycleStartTime = 0;
+    typedef std::chrono::steady_clock::time_point time_point;
+    typedef std::chrono::steady_clock::duration duration;
 
-    const int FPS_FRAMES = 5;
-    float currFps = 0;
-
-    unsigned long long minFrameTime = 1000 / 120; // 1000 / FPS CAP
+    const int FPS_CYCLE_FRAMES = 10; // number of frames to average FPS over (FPS 'cycle' length)
+    time_point currCycleStartTime; // list of durations in current cycle
+    duration currCycleDuration = duration::zero(); // time the current FPS cycle began
+    int currFrame = 0; // current frame number (since launch/last pause)
 
     // image layer flags
     bool handLayer = true, planeLayer = false;
@@ -75,10 +75,9 @@ int main() {
     bool playing = true;
 
     // turn on the camera
-    camera->beginCapture(120, false);
+    camera->beginCapture();
 
     // main demo loop
-
     while (true)
     {
         // get latest images from the camera
@@ -206,24 +205,22 @@ int main() {
         }
 
         // update FPS
-        if (cycleStartTime) {
-            if (frame % FPS_FRAMES == 0) {
-                currFps = (float)CLOCKS_PER_SEC  * (float)FPS_FRAMES / (clock() - cycleStartTime);
-                cycleStartTime = clock();
-            }
+        std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
 
-            if (frame > FPS_FRAMES && !camera->badInput()) {
-                // show FPS on top right
-                std::stringstream fpsDisplay;
-                double fpsDisp = currFps;
-                static char chr[32];
-                sprintf(chr, "FPS: %02.3lf", fpsDisp);
-                Point2i pos(handVisual.cols - 120, 25);
-                cv::putText(handVisual, chr, pos, 0, 0.5, WHITE);
-            }
+        if (currFrame % FPS_CYCLE_FRAMES == 0) {
+            currCycleDuration = now - currCycleStartTime;
+            currCycleStartTime = now;
         }
-        else {
-            cycleStartTime = clock();
+
+        if (currFrame > FPS_CYCLE_FRAMES && !camera->badInput()) {
+            float currFPS = FPS_CYCLE_FRAMES * 1e9f / currCycleDuration.count();
+
+            // show FPS on top right
+            std::stringstream fpsDisplay;
+            static char chr[32];
+            sprintf(chr, "FPS: %02.3lf", currFPS);
+            Point2i pos(handVisual.cols - 120, 25);
+            cv::putText(handVisual, chr, pos, 0, 0.5, WHITE);
         }
 
         int wait = 1;
@@ -283,11 +280,14 @@ int main() {
         case 'A':
             measureSurfArea ^= 1; break;
         case ' ':
-            playing ^= 1; break;
+            playing ^= 1; 
+            // reset frame number
+            if (playing) currFrame = -1;
+            break;
         }
 
         /**** End: Controls ****/
-        ++frame;
+        ++currFrame;
     }
 
     camera->endCapture();

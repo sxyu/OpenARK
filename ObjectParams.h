@@ -59,15 +59,15 @@ namespace ark {
 
         /**
          * minimum surface area (square meters) of hand
-         * default: 0.01
+         * default: 0.012
          */
-        double handMinArea = 0.01;
+        double handMinArea = 0.012;
 
         /**
          * maximum surface area (square meters) of hand
-         * default: 0.056
+         * default: 0.053
          */
-        double handMaxArea = 0.056;
+        double handMaxArea = 0.053;
 
         /**
          * if true, hand objects must touch the bottom/bottom-left/bottom-right
@@ -150,9 +150,9 @@ namespace ark {
 
         /**
          * maximum finger length
-         * default: 0.125
+         * default: 0.13
          */
-        double fingerLenMax = 0.125;
+        double fingerLenMax = 0.13;
 
         /**
          * minimum distance between two finger tips
@@ -194,9 +194,9 @@ namespace ark {
 
         /**
          * maximum curvature of the cluster's contour at a significant distance from the finger tip
-         * default: 1.20
+         * default: 1.65
          */
-        double fingerCurveFarMax = 1.20;
+        double fingerCurveFarMax = 1.65;
 
         /*
          * minimum finger length used when only one finger is detected
@@ -212,9 +212,9 @@ namespace ark {
 
         /**
          * minimum angle formed by finger tip and neighboring defects
-         * default: 0.08
+         * default: 0.06
          */
-        double singleFingerAngleThresh = 0.08;
+        double singleFingerAngleThresh = 0.06;
 
         /**
          * maximum angle formed by the start, far, and end points of a defect
@@ -325,21 +325,12 @@ namespace ark {
         double subplaneMinArea = 0.009;
 
         /**
-         * minimum (# points / # total points on screen * normal resolution^2)
-         * for a plane to be considered a 'dominant' plane and thus removed 
-         * prior to hand detection.
-         * default: 0.0030
-         */
-        double dominantPlaneMinPoints = 0.0030;
-
-        /**
          * minimum norm (r^2) between the equations of two 'subplanes'
          * to consider them separate planes.
          * if norm is lower, the two are combined into one larger plane object.
          * default: 0.0025
          */
         double planeCombineThreshold = 0.0025;
-
 
         /** Instance of ObjectParams initialized with default parameters */
         static const ObjectParams DEFAULT;

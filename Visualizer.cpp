@@ -99,8 +99,8 @@ namespace ark {
 
         // draw dominant direction faintly
         Point2f dir = hand->getDominantDirection();
-        cv::line(output, Point2f(center), Point2f(center) + dir * 100,
-            cv::Scalar(100, 100, 100), std::round(unitWid));
+        cv::line(output, Point2f(center), Point2f(center) + dir * 30,
+            cv::Scalar(120, 120, 120), std::round(unitWid));
 
 
         const std::vector<Point2i> & fingers = hand->getFingersIJ();

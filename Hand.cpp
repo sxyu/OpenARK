@@ -80,17 +80,16 @@ namespace ark {
     void Hand::initializeObject()
     {
         checkEdgeConnected();
-        surfaceArea = util::surfaceArea(fullMapSize, *points, *points_xyz, num_points);
+        // if not connected skip
+        if (!params->handRequireEdgeConnected || leftEdgeConnected || rightEdgeConnected) {
+            surfaceArea = util::surfaceArea(fullMapSize, *points, *points_xyz, num_points);
 
-        // surface area criterion
-        if (surfaceArea >= params->handMinArea && surfaceArea <= params->handMaxArea) {
-            // if not connected skip
-            if (!params->handRequireEdgeConnected || leftEdgeConnected || rightEdgeConnected) {
-               
-                // Step 2: determine whether cluster is a hand
+            // surface area criterion
+            if (surfaceArea >= params->handMinArea && surfaceArea <= params->handMaxArea) {
+                // Determine whether cluster is a hand
                 isHand = checkForHand();
             }
-        }  
+        }
     }
 
     bool Hand::checkForHand()
@@ -457,10 +456,8 @@ namespace ark {
                     util::angleBetweenPoints(finger_ij, center, defect_ij);
 
                 // number of points to the defect
-                int points_to_defect = std::min(abs(fingerDefectCands[i] - fingerTipCands[i]),
-                    std::min(fingerDefectCands[i], fingerTipCands[i]) +
-                    (int)contour.size() -
-                    std::max(fingerDefectCands[i], fingerTipCands[i]));
+                int points_to_defect = abs(fingerDefectCands[i] - fingerTipCands[i]);
+                points_to_defect = std::min(points_to_defect, (int)contour.size() - points_to_defect);
 
                 if (points_to_defect < 10)
                     continue;
@@ -603,7 +600,7 @@ namespace ark {
             if (angle <= params->singleFingerAngleThresh ||
                 util::pointOnEdge(fullMapSize, indexFinger_ij, params->bottomEdgeThresh,
                     params->sideEdgeThresh) || goodDefects.size() == 0) {
-                // angle too large or point on edge
+                // angle too small or point on edge
             }
             else {
                 this->fingersXYZ.push_back(indexFinger_xyz);

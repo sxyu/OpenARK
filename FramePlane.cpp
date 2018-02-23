@@ -51,10 +51,4 @@ namespace ark {
     {
         return util::pointPlaneDistance(point, equation);
     }
-
-    void FramePlane::cutFromXYZMap(cv::Mat & xyz_map, float threshold,
-        cv::Mat * mask, uchar mask_color)
-    {
-        util::removePlane(xyz_map, equation, threshold, mask, mask_color);
-    }
 }
