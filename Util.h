@@ -140,7 +140,7 @@ namespace ark {
         * @param radius number of neighboring points to be used for computing the average
         * @return surface normal vector (the one facing viewer) at the point of interest
         */
-        Vec3f normalAroundPoint(const cv::Mat & img, Point2i pt, int radius = 3);
+        Vec3f normalAroundPoint(const cv::Mat & img, const Point2i & pt, int radius = 3);
 
         /**
         * Eliminate outliers in a point cloud by considering the 'influence' of each point
@@ -260,22 +260,19 @@ namespace ark {
         Point2f angleToPoint(double angle);
 
         /**
-        * Converts a point into a value representing the direction it is at from the origin, going CCW starting from (0, 1), if y-axis is facing up.
-        * Note: the value returned is not necessarily the slope. However, points ordered by this quantity are guarenteed to be in order of angle.
-        * This function returns x/y if pointij is in the 3rd quadrant, FLT_MAX/2 - x/y if in 2nd quadrant,
-                             FLT_MAX/2 + x/y if in 1st quadrant, and FLT_MAX - x/y if in 4th quadrant.
-        * @param pointij input point in ij coordinates
-        * @return slope value of point
-        */
-        double pointToSlope(Point2i pointij);
-
-        /**
         * Compute the angle in radians between two points in ij coordinates, optionally through a third point (defaults to origin)
         * @param a, b the points, in ij oordinates
         * @param center optional center point (angle goes from a - center - b)
         * @return angle between points
         */
         double angleBetweenPoints(const Point2f & a, const Point2f & b, const Point2f & center = Point2f(0, 0));
+
+        /**
+        * Normalize a vector and make sure it points towards the viewer (negative z)
+        * @param vec input vector
+        * @return normalized vector
+        */
+        Vec3f normalize(const Vec3f & vec);
 
         /**
          * Compute the magnitude of a point.

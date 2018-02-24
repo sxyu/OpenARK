@@ -278,30 +278,30 @@ namespace ark {
              *  If the classifier has yet to be trained, throws ClassifierNotTrainedException.
              *  @param [in] hand Hand instance
              *  @param [in] depth_map depth map (note: must be CV_32FC3)
-             *  @param num_features number of features to extract
-             *  @param avg_size size of square around each point on XYZ map 
-             *                  to average when obtaining XYZ coordinates from IJ coordinates
              *  @param top_left optionally, top left point represented in depth map (x, y coordinates to translate by)
              *  @param full_wid optionally, size of full depth map. By default, uses width of depth_map
+             *  @param num_features number of circle features to extract
+             *  @param avg_size size of square around each point on XYZ map 
+             *                  to average when obtaining XYZ coordinates from IJ coordinates
              *  @return Confidence that object is a hand (double value between 0 and 1)
              */
             float classify(ark::Hand & hand,
-                const cv::Mat & depth_map, int num_features = 32, int avg_size = 5,
-                cv::Point top_left = cv::Point(0, 0), int full_wid = -1) const;
+                const cv::Mat & depth_map, cv::Point top_left = cv::Point(0, 0), int full_wid = -1, 
+                int num_features = 48, int avg_size = 5) const;
 
             /** Extract features from a given Hand instance and depth map for use with SVMHandValidator
              *  @param [in] hand Hand instance
              *  @param [in] depth_map depth map (note: must be CV_32FC3)
+             *  @param top_left optionally, top left point represented in depth map (x, y coordinates to translate by)
+             *  @param full_wid optionally, size of full depth map. By default, uses width of depth_map
              *  @param num_features number of features to extract
              *  @param avg_size size of square around each point on XYZ map 
              *                  to average when obtaining XYZ coordinates from IJ coordinates
-             *  @param top_left optionally, top left point represented in depth map (x, y coordinates to translate by)
-             *  @param full_wid optionally, size of full depth map. By default, uses width of depth_map
              *  @return vector of features (type CV_32F, 1xN)
              */
             static cv::Mat extractFeatures(ark::Hand & hand,
-                const cv::Mat & depth_map, int num_features = 32, int avg_size = 5,
-                cv::Point top_left = cv::Point(0, 0), int full_wid = -1);
+                const cv::Mat & depth_map, cv::Point top_left = cv::Point(0, 0), int full_wid = -1,
+                int num_features = 48, int avg_size = 5);
 
         private:
 

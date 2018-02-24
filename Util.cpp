@@ -102,8 +102,8 @@ namespace ark {
         template<class T>
         T pointPlaneDistance(const cv::Vec<T, 3> & pt, const cv::Vec<T, 3> & eqn)
         {
-            return abs(eqn[0]*pt[0] + eqn[1]*pt[1] - pt[2] + eqn[2]) /
-                   sqrt(eqn[0]*eqn[0] + eqn[1]*eqn[1] + 1.0);
+            return abs(eqn[0] * pt[0] + eqn[1] * pt[1] - pt[2] + eqn[2]) /
+                sqrt(eqn[0] * eqn[0] + eqn[1] * eqn[1] + 1.0);
         }
 
         template float pointPlaneDistance<float>(const cv::Vec<float, 3> & pt, const cv::Vec<float, 3> & eqn);
@@ -122,8 +122,8 @@ namespace ark {
         template<class T>
         T pointPlaneNorm(const cv::Vec<T, 3> & pt, const cv::Vec<T, 3> & eqn)
         {
-            T alpha = eqn[0]*pt[0] + eqn[1]*pt[1] - pt[2] + eqn[2];
-            return alpha * alpha / (eqn[0]*eqn[0] + eqn[1]*eqn[1] + 1.0);
+            T alpha = eqn[0] * pt[0] + eqn[1] * pt[1] - pt[2] + eqn[2];
+            return alpha * alpha / (eqn[0] * eqn[0] + eqn[1] * eqn[1] + 1.0);
         }
 
         template float pointPlaneNorm<float>(const cv::Vec<float, 3> & pt, const cv::Vec<float, 3> & eqn);
@@ -141,7 +141,7 @@ namespace ark {
                 for (int j = 0; j < N - 1; ++j) {
                     A(i, j) = points[i][j];
                 }
-                A(i, N-1) = 1.0;
+                A(i, N - 1) = 1.0;
                 b(i) = points[i][N - 1];
             }
 
@@ -162,14 +162,14 @@ namespace ark {
 
         template<class T>
         cv::Vec<T, 3> ransacFindPlane(const std::vector<cv::Vec<T, 3>>& points,
-                                       T thresh, int iterations, int num_points)
+            T thresh, int iterations, int num_points)
         {
             cv::Vec<T, 3> best; int bestInliers = 0;
-            
+
             // number of points in each sample
             static const int SAMPLE_SIZE = 3;
 
-            if (num_points == -1) num_points = (int) points.size();
+            if (num_points == -1) num_points = (int)points.size();
             if (num_points < SAMPLE_SIZE) throw; // too few points
 
             // create RNG
@@ -195,8 +195,8 @@ namespace ark {
                         if (idx[i] >= idx[j]) ++idx[i];
                     }
                 }
-                const cv::Vec<T, 3> & a = points[idx[0]], 
-                    & b = points[idx[1]], & c = points[idx[2]];
+                const cv::Vec<T, 3> & a = points[idx[0]],
+                    &b = points[idx[1]], &c = points[idx[2]];
 
                 // compute equation of plane through these points
                 cv::Vec<T, 3> normal = cv::normalize((b - a).cross(c - a));
@@ -222,9 +222,9 @@ namespace ark {
         }
 
         template cv::Vec<float, 3> ransacFindPlane<float>(const std::vector<cv::Vec<float, 3>>& points,
-                        float thresh, int iterations, int num_points);
+            float thresh, int iterations, int num_points);
         template cv::Vec<double, 3> ransacFindPlane<double>(const std::vector<cv::Vec<double, 3>>& points,
-                        double thresh, int iterations, int num_points);
+            double thresh, int iterations, int num_points);
 
         double euclideanDistancePerPixel(cv::Mat xyzMap, Point2i pt, int radius)
         {
@@ -290,7 +290,7 @@ namespace ark {
                         continue;
                     }
 
-                    if (pointPlaneNorm(refPtr[col] , plane_equation) < threshold) {
+                    if (pointPlaneNorm(refPtr[col], plane_equation) < threshold) {
                         // found nearby plane, remove point (i.e. set to 0)
                         imgPtr[col] = 0;
                     }
@@ -313,7 +313,7 @@ namespace ark {
             for (int r = std::max(0, pt.y - radius); r <= pt.y + radius; ++r)
             {
                 if (r >= xyz_map.rows) break;
-               
+
                 const Vec3f * ptr = xyz_map.ptr<Vec3f>(r);
                 for (int c = std::max(0, pt.x - radius); c <= pt.x + radius; ++c)
                 {
@@ -332,41 +332,10 @@ namespace ark {
             return average / count;
         }
 
-        Vec3f normalAroundPoint(const cv::Mat & xyz_map, Point2i pt, int radius)
-        {
-            const Vec3f & center = xyz_map.at<Vec3f>(pt);
-            if (center[2] == 0) return 0;
-
-            Point2i tlp (std::max(pt.x - radius, 0), std::max(pt.y - radius, 0));
-            Point2i trp (std::min(pt.x + radius, xyz_map.cols - 1),
-                         std::max(pt.y - radius, 0));
-            Point2i blp (std::max(pt.x - radius, 0),
-                         std::min(pt.y + radius, xyz_map.rows - 1));
-            Point2i brp (std::min(pt.x + radius, xyz_map.cols - 1),
-                         std::min(pt.y + radius, xyz_map.rows - 1));
-
-            const Vec3f & tl = xyz_map.at<Vec3f>(tlp);
-            const Vec3f & tr = xyz_map.at<Vec3f>(trp);
-            const Vec3f & bl = xyz_map.at<Vec3f>(blp);
-            const Vec3f & br = xyz_map.at<Vec3f>(brp);
-
-            bool empty = true;
-            Vec3f average = 
-                (tl - center).cross(tr - center) +
-                (tr - center).cross(br - center) +
-                (br - center).cross(bl - center) +
-                (bl - center).cross(tl - center);
-
-            // divide to get average normal, then normalize
-            average = cv::normalize(average);
-
-            return average;
-        }
-
-        int removeOutliers(const std::vector<Vec3f> & data, std::vector<Vec3f>& output, 
-                               double thresh, 
-                               const std::vector<Point2i> * data_aux,
-                               std::vector<Point2i> * output_aux, int num_data_pts)
+        int removeOutliers(const std::vector<Vec3f> & data, std::vector<Vec3f>& output,
+            double thresh,
+            const std::vector<Point2i> * data_aux,
+            std::vector<Point2i> * output_aux, int num_data_pts)
         {
             if (num_data_pts == -1) num_data_pts = (int)data.size();
             const int NUM_OUTPUT_PTS = num_data_pts * (1.0 - thresh);
@@ -380,53 +349,84 @@ namespace ark {
 
             // compute influence
             std::vector<float> influence(num_data_pts);
+            std::vector<int> influenceOrder(num_data_pts);
+
             for (int i = 0; i < num_data_pts; ++i) {
-                influence[i] =
-                    norm(avgPos - (totalPos - data[i]) / (num_data_pts - 1));
+                influence[i] = norm(avgPos - (totalPos - data[i]) / (num_data_pts - 1));
+                influenceOrder[i] = i;
             }
 
-            std::vector<float> influenceOrder = influence;
-
             // order by influence
-            std::sort(influenceOrder.begin(), influenceOrder.end());
+            std::sort(influenceOrder.begin(), influenceOrder.end(),
+                [influence](int a, int b) {
+                return influence[a] < influence[b];
+            }
+            );
 
             output.resize(NUM_OUTPUT_PTS);
             if (output_aux) output_aux->resize(NUM_OUTPUT_PTS);
 
             // take elements with least influence
-            for (int i = 0; i < num_data_pts; ++i) {
-                int idx = std::lower_bound(influenceOrder.begin(), influenceOrder.end(),
-                    influence[i]) - influenceOrder.begin();
-
-                if (idx >= NUM_OUTPUT_PTS) continue;
-                output[idx] = data[i]; 
-                if (data_aux && output_aux) (*output_aux)[idx] = (*data_aux)[i];
+            for (int i = 0; i < NUM_OUTPUT_PTS; ++i) {
+                int idx = influenceOrder[i];
+                output[i] = data[idx];
+                if (data_aux && output_aux) (*output_aux)[i] = (*data_aux)[idx];
             }
 
             return NUM_OUTPUT_PTS;
         }
 
-        void computeNormalMap(const cv::Mat & xyz_map, cv::Mat & output_mat, 
+        Vec3f normalAroundPoint(const cv::Mat & xyz_map, const Point2i & pt, int radius)
+        {
+            const Vec3f & center = xyz_map.at<Vec3f>(pt);
+            if (center[2] == 0) return 0;
+
+            bool p[4]; Vec3f v[4];
+
+            p[0] = pt.x >= radius;
+            if (p[0]) v[0] = xyz_map.at<Vec3f>(pt.y, pt.x - radius) - center;
+
+            p[1] = pt.y >= radius;
+            if (p[1]) v[1] = xyz_map.at<Vec3f>(pt.y - radius, pt.x) - center;
+
+            p[2] = pt.x < xyz_map.cols - radius;
+            if (p[2]) v[2] = xyz_map.at<Vec3f>(pt.y, pt.x + radius) - center;
+
+            p[3] = pt.y < xyz_map.rows - radius;
+            if (p[3]) v[3] = xyz_map.at<Vec3f>(pt.y + radius, pt.x) - center;
+
+            Vec3f average = (p[0] && p[3]) ? normalize(v[0].cross(v[3])) : 0;
+            for (int i = 0; i < 3; ++i) {
+                if (p[i] && p[i + 1]) average += normalize(v[i].cross(v[i + 1]));
+            }
+
+            return normalize(average);
+        }
+
+        void computeNormalMap(const cv::Mat & xyz_map, cv::Mat & output_mat,
             int normal_dist, int resolution, bool fill_in)
         {
+            cv::Size stripes = xyz_map.size() / resolution;
+
             if (fill_in) {
-                output_mat.create(xyz_map.size() / resolution, CV_32FC3);
+                output_mat.create(stripes, CV_32FC3);
             }
             else {
                 output_mat.create(xyz_map.size(), CV_32FC3);
             }
 
+            const int R = stripes.height, C = stripes.width;
             int step = fill_in ? 1 : resolution;
+            int multiplier = fill_in ? 1 : resolution;
 
-            Vec3f * curRow;
-            for (int i = 0; i < output_mat.rows; i += step) {
-                curRow = output_mat.ptr<Vec3f>(i);
-
-                for (int j = 0; j < output_mat.cols; j += step) {
-                    curRow[j] = util::normalAroundPoint(xyz_map,
-                        Point2i(j, i) * (resolution / step), normal_dist);
+            cv::parallel_for_(cv::Range(0, R*C), [&](const cv::Range & range) {
+                for (int r = range.start; r < range.end; ++r) {
+                    int i = r / C * multiplier, j = r % C * multiplier;
+                    output_mat.ptr<Vec3f>(i)[j] =
+                        util::normalAroundPoint(xyz_map,
+                            Point2i(j, i) * (resolution / step), normal_dist);
                 }
-            }
+            });
 
             if (fill_in) {
                 cv::resize(output_mat, output_mat, xyz_map.size());
@@ -561,7 +561,7 @@ namespace ark {
 
                     if (i + 2 < rowStart.size() && nx >= rowStart[i + 2]) continue;
 
-                    if (points_ij[nx].x < points_ij[j].x){
+                    if (points_ij[nx].x < points_ij[j].x) {
                         auto it1 = points_ij.begin() + (nx + 1);
                         auto it2 = points_ij.begin();
 
@@ -762,7 +762,7 @@ namespace ark {
             int inv1, int inv2, float inv2_thresh, cv::Mat * color)
         {
             // true if temporary 'visited' matrix allocated (we'll need to delete it after)
-            bool tempVisMat = (color == nullptr);
+            bool tempVisMat = !color;
 
             // create 'visited' matrix
             if (tempVisMat) {
@@ -813,49 +813,45 @@ namespace ark {
                 sw = true;
 
                 const Vec3f * xyz;
+                while (visPtr[pt.x] > 0) {
+                    // if not visited, visit; otherwise ignore this point
+                    xyz = &xyzPtr[pt.x];
 
-                while (true) {
-                    // if not visited, visit; otherwise ignore this point and move left/right
-                    if (visPtr[pt.x] > 0) {
-                        xyz = &xyzPtr[pt.x];
+                    // mark as visited
+                    visPtr[pt.x] = 0;
 
-                        // mark as visited
-                        visPtr[pt.x] = 0;
+                    // output this point to mask, etc.
+                    if (output_mask) oPtr[pt.x] = *xyz;
+                    if (output_ij_points) output_ij_points->at(total) = pt;
+                    if (output_xyz_points) output_xyz_points->at(total) = *xyz;
 
-                        // output this point to mask, etc.
-                        if (output_mask) oPtr[pt.x] = *xyz;
-                        if (output_ij_points) output_ij_points->at(total) = pt;
-                        if (output_xyz_points) output_xyz_points->at(total) = *xyz;
+                    // increment the total number of points
+                    ++total;
 
-                        // increment the total number of points
-                        ++total;
+                    // make a list of adjacent points
+                    nNext = -1;
+                    if (pt.y >= inv1) nextPts[++nNext] = Point2i(pt.x, pt.y - inv1);
+                    if (pt.y < R - inv1) nextPts[++nNext] = Point2i(pt.x, pt.y + inv1);
 
-                        // make a list of adjacent points
-                        nNext = -1;
-                        if (pt.y >= inv1) nextPts[++nNext] = Point2i(pt.x, pt.y - inv1);
-                        if (pt.y < R - inv1) nextPts[++nNext] = Point2i(pt.x, pt.y + inv1);
+                    if (inv2 > 0) {
+                        if (pt.y >= inv2) nextPts[++nNext] = Point2i(pt.x, pt.y - inv2);
+                        if (pt.y < R - inv2) nextPts[++nNext] = Point2i(pt.x, pt.y + inv2);
+                    }
 
-                        if (inv2 > 0) {
-                            if (pt.y >= inv2) nextPts[++nNext] = Point2i(pt.x, pt.y - inv2);
-                            if (pt.y < R - inv2) nextPts[++nNext] = Point2i(pt.x, pt.y + inv2);
+                    // go to each adjacent point
+                    for (uint i = 0; i <= nNext; ++i) {
+                        Point2i & adjPt = nextPts[i];
+                        uchar & adjVis = color->at<uchar>(adjPt);
+
+                        // skip if already visited
+                        if (adjVis <= 1) continue;
+
+                        // update & push to stack if point is close enough
+                        if (util::norm(*xyz - xyz_map.at<Vec3f>(adjPt)) <
+                            (i < 2 ? thresh : max_distance2)) {
+                            stk[stkSize++] = adjPt;
+                            adjVis = 1; // mark 'visiting'
                         }
-
-                        // go to each adjacent point
-                        for (uint i = 0; i <= nNext; ++i) {
-                            Point2i & adjPt = nextPts[i];
-                            uchar & adjNVis = color->at<uchar>(adjPt);
-
-                            // skip if already visited
-                            if (adjNVis <= 1) continue;
-
-                            // update & push to stack if point is close enough
-                            if (util::norm(*xyz - xyz_map.at<Vec3f>(adjPt)) <
-                                         (i < 2 ? thresh : max_distance2)) {
-                                stk[stkSize++] = adjPt;
-                                adjNVis = 1; // mark 'visiting'
-                            }
-                        }
-
                     }
 
                     // scanline
@@ -867,18 +863,17 @@ namespace ark {
                             sw = false;
 
                             // reset to middle
-                            pt.x = origX;
+                            pt.x = origX - inv1;
                             xyz = &xyzPtr[origX];
-                            continue;
+                            if (pt.x < 0 || util::norm(*xyz - xyzPtr[pt.x]) >= thresh) {
+                                break;
+                            }
                         }
                     }
-
-                    // immediately run when switched
-                    if (!sw) {
+                    else {
                         // go left
                         pt.x -= inv1;
-                        if (pt.x < 0 || visPtr[pt.x] == 0 ||
-                            util::norm(*xyz - xyzPtr[pt.x]) >= thresh) {
+                        if (pt.x < 0 || util::norm(*xyz - xyzPtr[pt.x]) >= thresh) {
                             break;
                         }
                     }
@@ -912,25 +907,11 @@ namespace ark {
             return angle;
         }
 
-        // convert an ij point to a slope, clockwise from the bottom (0 at 0 degrees, FLT_MAX at 360)
-        double pointToSlope(Point2i pt) {
-            double ratio, step = FLT_MAX / 4;
-
-            if (pt.y == 0) ratio = step;
-            else ratio = std::min((double)abs(pt.x) / abs(pt.y), step);
-
-            if (pt.x <= 0) {
-                if (pt.y >= 0)
-                    return ratio;
-                else // pt.y > 0
-                    return 2 * step - ratio;
-            }
-            else { // pt.x <= 0
-                if (pt.y <= 0)
-                    return 2 * step + ratio;
-                else // pt.y <= 0
-                    return 24 * step - ratio;
-            }
+        Vec3f normalize(const Vec3f & vec)
+        {
+            Vec3f result = cv::normalize(vec);
+            if (result[2] > 0) return -result;
+            return result;
         }
 
         template <class T>

@@ -8,23 +8,23 @@
 // limited to file scope
 namespace {
     /**
-    * Comparator for sorting defects in order of slope (only available in FrameObject)
+    * Comparator for sorting defects in order of angle (only available in Hand.cpp)
     */
     class DefectComparer {
     public:
         /**
-        * Create a new comparator
+        * Create a new defect comparator
         * @param contour the contour which the defects were computed from
         * @param defects list of defects
         * @param center center point from which slopes should be computed from
         */
         DefectComparer(std::vector<ark::Point2i> contour,
             std::vector<cv::Vec4i> defects, ark::Point2i center) {
-            slope.resize(contour.size());
+            angle.resize(contour.size());
 
             for (unsigned i = 0; i < defects.size(); ++i) {
                 ark::Point2i pt = contour[defects[i][ATTR_USED]] - center;
-                slope[defects[i][ATTR_USED]] = ark::util::pointToSlope(pt);
+                angle[defects[i][ATTR_USED]] = ark::util::pointToAngle(pt);
             }
         }
 
@@ -33,7 +33,7 @@ namespace {
         */
         bool operator()(cv::Vec4i a, cv::Vec4i b) const {
             int idxA = a[ATTR_USED], idxB = b[ATTR_USED];
-            return slope[idxA] > slope[idxB];
+            return angle[idxA] > angle[idxB];
         }
 
     private:
@@ -45,7 +45,7 @@ namespace {
         /**
         * stores the slopes of all the points on the contour
         */
-        std::vector<double> slope;
+        std::vector<double> angle;
 
         // default constructor disabled
         DefectComparer() {};
@@ -722,7 +722,6 @@ namespace ark {
         }
         
         // find dominant direction
-
         if (nFin > 0) {
             Point2f fingCen = this->fingersIJ[nFin / 2];
             if (nFin % 2 == 0) {
@@ -735,7 +734,8 @@ namespace ark {
 
         // Final SVM check
         if (params->handUseSVM && handValidator.isTrained()) {
-            this->svmConfidence = handValidator.classify(*this, xyzMap, 32, 5, topLeftPt, fullMapSize.width);
+            this->svmConfidence = handValidator.classify(*this, xyzMap, 
+                topLeftPt, fullMapSize.width);
             if (this->svmConfidence < params->handSVMConfidenceThresh) {
                 // SVM confidence value below threshold, reverse decision & destroy the hand instance
                 return false;

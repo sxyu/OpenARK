@@ -92,17 +92,17 @@ namespace ark {
         /**
          * @see handSVMHighConfidenceThresh
          * minimum SVM confidence value ([0...1]) for first hand object
-         * default: 0.45
+         * default: 0.55
          */
-        float handSVMConfidenceThresh = 0.45f;
+        float handSVMConfidenceThresh = 0.55f;
 
         /**
          * @see handSVMConfidenceThresh
          * minimum SVM confidence value ([0...1]) for additional hand objects
          * (only applied in queryHands)
-         * default: 0.55
+         * default: 0.56
          */
-        double handSVMHighConfidenceThresh = 0.55f;
+        double handSVMHighConfidenceThresh = 0.56f;
 
         /**
          * maximum distance between the center of the hand and the top point in the hand cluster (m)
@@ -285,9 +285,9 @@ namespace ark {
 
         /**
          * fraction of outlier points to remove from the plane before performing regression
-         * default: 0.5f
+         * default: 0.2f
          */
-        float planeOutlierRemovalThreshold = 0.5f;
+        float planeOutlierRemovalThreshold = 0.2f;
 
         /**
          * minimum (# points / # total points on screen / normal resolution^2)

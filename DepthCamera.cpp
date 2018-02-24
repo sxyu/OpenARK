@@ -24,7 +24,7 @@ namespace ark {
 
     void DepthCamera::beginCapture(int fps_cap, bool remove_noise)
     {
-        assert(captureInterrupt == true);
+        ASSERT(captureInterrupt == true, "beginCapture: already capturing from this camera");
         captureInterrupt = false;
         std::thread thd(&DepthCamera::captureThreadingHelper, this, fps_cap,
             &captureInterrupt, remove_noise);
@@ -86,7 +86,7 @@ namespace ark {
         cv::Mat xyzMap = getXYZMap();
         const int R = xyzMap.rows, C = xyzMap.cols;
 
-        cv::Mat floodFillMap(xyzMap.size(), CV_8U);
+        cv::Mat floodFillMap(R, C, CV_8U);
 
         const Vec3f * ptr;
         uchar * visPtr;
@@ -134,7 +134,7 @@ namespace ark {
                 {
                     int points_in_comp = util::floodFill(xyzMap, Point2i(c, r),
                         params->handClusterMaxDistance,
-                        &allIjPoints, &allXyzPoints, nullptr, 1, 7,
+                        &allIjPoints, &allXyzPoints, nullptr, 1, 4,
                         params->handClusterMaxDistance * 12, &floodFillMap);
 
                     if (points_in_comp >= CLUSTER_MIN_POINTS)
@@ -304,20 +304,28 @@ namespace ark {
         cv::Size sz = getImageSize();
 
         // initialize back buffers, if necessary
-        //if (xyzMapBuf.data == nullptr) 
-            xyzMapBuf.create(sz, CV_32FC3);
+        xyzMapBuf.release();
+        xyzMapBuf.create(sz, CV_32FC3);
 
-        if (/*rgbMapBuf.data == nullptr && */hasRGBMap()) 
+        if (hasRGBMap()) {
+            rgbMapBuf.release();
             rgbMapBuf.create(sz, CV_8UC3);
+        }
 
-        if (/*irMapBuf.data == nullptr && */ hasIRMap()) 
+        if (hasIRMap()) {
+            irMapBuf.release();
             irMapBuf.create(sz, CV_8U);
+        }
 
-        if (/* ampMapBuf.data == nullptr && */ hasAmpMap()) 
+        if (hasAmpMap()) {
+            ampMapBuf.release();
             ampMapBuf.create(sz, CV_32F);
+        }
 
-        if (/* flagMapBuf.data == nullptr && */ hasFlagMap()) 
+        if (hasFlagMap()) {
+            flagMapBuf.release();
             flagMapBuf.create(sz, CV_8U);
+        }
     }
 
     /** swap a single buffer */
@@ -515,10 +523,10 @@ namespace ark {
         else {
             normalMap = *normal_map;
         }
-        const int R = normalMap.rows, C = normalMap.cols, N = R * C;
+        const int R = xyz_map.rows, C = xyz_map.cols, N = R * C;
 
         // initialize flood fill map
-        cv::Mat floodFillMap(C, R, CV_8U);
+        cv::Mat floodFillMap(R, C, CV_8U);
         const Vec3f * ptr; uchar * visPtr;
         for (int r = 0; r < R; ++r)
         {
@@ -555,11 +563,11 @@ namespace ark {
 
         for (int r = 0; r < R; r += params->normalResolution) {
             visPtr = floodFillMap.ptr<uchar>(r);
+
             for (int c = 0; c < C; c += params->normalResolution) {
                 if (visPtr[c] == 0) continue;
 
                 Point2i pt(c, r);
-
                 // flood fill normals
                 int numPts = util::floodFill(normalMap, pt, params->planeFloodFillThreshold,
                                              &allIndices, nullptr, nullptr,

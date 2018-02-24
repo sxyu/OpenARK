@@ -97,12 +97,6 @@ namespace ark {
         cv::circle(output, center, hand->getCircleRadius(), cv::Scalar(100, 100, 100), 
             std::round(unitWid));
 
-        // draw dominant direction faintly
-        Point2f dir = hand->getDominantDirection();
-        cv::line(output, Point2f(center), Point2f(center) + dir * 30,
-            cv::Scalar(120, 120, 120), std::round(unitWid));
-
-
         const std::vector<Point2i> & fingers = hand->getFingersIJ();
         const std::vector<Point2i> & defects = hand->getDefectsIJ();
         const std::vector<Vec3f> & fingersXYZ = hand->getFingers();
@@ -162,6 +156,11 @@ namespace ark {
                 cv::putText(output, sstr.str(), dispPt, 0, 0.8, cv::Scalar(255, 255, 255), 1);
             }
         }
+
+        // draw dominant direction faintly
+        Point2f dir = hand->getDominantDirection();
+        cv::arrowedLine(output, Point2f(center), Point2f(center) + dir * 0.2,
+            cv::Scalar(200, 200, 120), std::round(unitWid * 3), 8, 0, 0.3);
     }
 
     void Visualizer::visualizeCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud)

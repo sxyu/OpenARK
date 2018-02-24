@@ -52,12 +52,9 @@ int main() {
     srand(time(NULL));
 
     // store frame & FPS information
-    typedef std::chrono::steady_clock::time_point time_point;
-    typedef std::chrono::steady_clock::duration duration;
-
     const int FPS_CYCLE_FRAMES = 10; // number of frames to average FPS over (FPS 'cycle' length)
-    time_point currCycleStartTime; // list of durations in current cycle
-    duration currCycleDuration = duration::zero(); // time the current FPS cycle began
+    clock_t currCycleStartTime = 0; // start time of current cycle
+    float currFPS; // current FPS
     int currFrame = 0; // current frame number (since launch/last pause)
 
     // image layer flags
@@ -205,16 +202,12 @@ int main() {
         }
 
         // update FPS
-        std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
-
         if (currFrame % FPS_CYCLE_FRAMES == 0) {
-            currCycleDuration = now - currCycleStartTime;
-            currCycleStartTime = now;
+            currFPS = (float) FPS_CYCLE_FRAMES * CLOCKS_PER_SEC / (clock() - currCycleStartTime);
+            currCycleStartTime = clock();
         }
 
         if (currFrame > FPS_CYCLE_FRAMES && !camera->badInput()) {
-            float currFPS = FPS_CYCLE_FRAMES * 1e9f / currCycleDuration.count();
-
             // show FPS on top right
             std::stringstream fpsDisplay;
             static char chr[32];

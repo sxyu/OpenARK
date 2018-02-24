@@ -173,23 +173,16 @@ namespace ark {
         return fullXyzMap;
     }
 
-    // helper for performing morphological operations
-    void FrameObject::morph(int erode_sz, int dilate_sz, bool dilate_first, bool gray_map) {
+    // helper for performing morphological operations on gray map
+    void FrameObject::morph(int erode_sz, int dilate_sz, bool dilate_first) {
         if (dilate_sz == -1) dilate_sz = erode_sz;
 
         cv::Mat eKernel = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(erode_sz, erode_sz)),
             dKernel = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(dilate_sz, dilate_sz));
 
-        if (gray_map) {
-            if (dilate_first) cv::dilate(grayMap, grayMap, dKernel);
-            cv::erode(grayMap, grayMap, eKernel);
-            if (!dilate_first) cv::dilate(grayMap, grayMap, dKernel);
-        }
-        else {
-            if (dilate_first) cv::dilate(xyzMap, xyzMap, dKernel);
-            cv::erode(xyzMap, xyzMap, eKernel);
-            if (!dilate_first) cv::dilate(xyzMap, xyzMap, dKernel);
-        }
+        if (dilate_first) cv::dilate(grayMap, grayMap, dKernel);
+        cv::erode(grayMap, grayMap, eKernel);
+        if (!dilate_first) cv::dilate(grayMap, grayMap, dKernel);
     }
     
     void FrameObject::computeContour(const cv::Mat & xyzMap, 
@@ -202,7 +195,7 @@ namespace ark {
 
         std::vector<std::vector<Point2i> > contours;
 
-        cv::Mat thresh;
+        cv::UMat thresh;
         cv::threshold(grayMap, thresh, 25, 255, cv::THRESH_BINARY);
         cv::findContours(thresh, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE,
             2 * topLeftPt);
@@ -234,21 +227,21 @@ namespace ark {
 
         if (xyzMap.rows == 0 || xyzMap.cols == 0 || points == nullptr || points_xyz == nullptr) return;
 
-
         int points_to_use = num_points;
         if (points_to_use < 0) points_to_use = (int)points->size();
 
         if (points->size() < points_to_use || points_xyz->size() < points_to_use) return;
 
         grayMap = cv::Mat::zeros(xyzMap.size(), CV_8U);
-
+        
         for (int i = 0; i < points_to_use; ++i) {
             uchar val = (uchar)((*points_xyz)[i][2] * 256.0);
-            if (val >= thresh)
+            if (val >= thresh) {
                 grayMap.at<uchar>((*points)[i] - topLeftPt) = val;
+            }
         }
 
-        morph(2, 3, false, true);
+        morph(1, 4, false);
 
         for (int i = 1; i < getContourScalingFactor(); i <<= 1) {
             cv::pyrUp(grayMap, grayMap);

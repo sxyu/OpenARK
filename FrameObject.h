@@ -211,13 +211,12 @@ namespace ark {
         static std::vector<Point2i> FrameObject::clusterConvexHull(std::vector<Point2i> convex_hull, int threshold);
 
         /**
-          * Perform erode-dilate morphological operations on the cluster's depth image
+          * Perform erode-dilate morphological operations on the cluster's gray map
           * @param erode_sz size of erode kernel
           * @param dilate_sz size of dilate kernel (by default, takes same value as erodeAmt)
           * @param dilate_first if true, performs dilate before erode
-          * @param gray_map if true, performs operations on the gray map instead of the xyz map
           */
-        void morph(int erode_sz, int dilate_sz = -1, bool dilate_first = false, bool gray_map = false);
+        void morph(int erode_sz, int dilate_sz = -1, bool dilate_first = false);
 
         /**
          * Compute the cluster's contour

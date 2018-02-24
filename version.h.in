@@ -12,11 +12,6 @@
 // Uncomment to enable debug code
 //#define DEBUG
 
-// Necessary for typedefs
-#include <opencv2/core/types.hpp>
-#include <boost/smart_ptr/shared_ptr.hpp>
-#include <vector>
-
 // Constants
 #ifndef M_PI
     #define M_PI 3.14159265358979323846
@@ -24,6 +19,25 @@
 #ifndef PI
     #define PI 3.14159265358979323846
 #endif
+
+// Custom assertion statement that prints out a message
+#ifndef NDEBUG
+#   define ASSERT(condition, message) \
+    do { \
+        if (!(condition)) { \
+             std::cerr << "OpenARK assertion '" #condition "' failed in " << \
+              __FILE__ << " at line " << __LINE__ << ": " << message << "\n"; \
+            std::terminate(); \
+        } \
+    } while (false)
+#else
+#   define ASSERT(condition, message) do { } while (false)
+#endif
+
+// Necessary for typedefs
+#include <opencv2/core/types.hpp>
+#include <boost/smart_ptr/shared_ptr.hpp>
+#include <vector>
 
 // OpenARK namespace
 namespace ark {
