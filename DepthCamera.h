@@ -2,6 +2,8 @@
 
 #include "version.h"
 
+#include <mutex>
+
 #include "Util.h"
 #include "FrameObject.h"
 #include "Hand.h"
@@ -146,7 +148,7 @@ namespace ark {
          * @param elim_planes if true, finds and eliminates planes in the scene
          * @return vector of shared pointers to visible hands
          */
-        std::vector<HandPtr> & getFrameHands(const ObjectParams * params = nullptr, bool elim_planes = true);
+        std::vector<Hand::Ptr> & getFrameHands(const ObjectParams * params = nullptr, bool elim_planes = true);
  
         /*
          * Retrieve a list of planes visible in the current frame
@@ -155,7 +157,7 @@ namespace ark {
          * @param params parameters for object/plane/hand detection
          * @return vector of shared pointers to visible planes
          */
-        std::vector<FramePlanePtr> & getFramePlanes(const ObjectParams * params = nullptr);
+        std::vector<FramePlane::Ptr> & getFramePlanes(const ObjectParams * params = nullptr);
 
         /*
          * Retrieve a list of objects visible in the current frame
@@ -164,7 +166,7 @@ namespace ark {
          * @param params parameters for object/plane/hand detection
          * @return vector of shared pointers to visible objects
          */
-        std::vector<FrameObjectPtr> & getFrameObjects(const ObjectParams * params = nullptr);
+        std::vector<FrameObject::Ptr> & getFrameObjects(const ObjectParams * params = nullptr);
 
         /**
          * Returns the current XYZ map (ordered point cloud) of the camera. 
@@ -258,17 +260,17 @@ namespace ark {
         /**
          * Stores pointers to all objects visible to the camera in the current frame
          */
-        std::vector<FrameObjectPtr> frameObjects;
+        std::vector<FrameObject::Ptr> frameObjects;
 
         /**
          * Stores pointers to planes visible to the camera in the current frame
          */
-        std::vector<FramePlanePtr> framePlanes;
+        std::vector<FramePlane::Ptr> framePlanes;
 
         /**
          * Stores pointers to hands visible to the camera in the current frame
          */
-        std::vector<HandPtr> hands;
+        std::vector<Hand::Ptr> hands;
 
         /**
          * True if input is invalid

@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "version.h"
 #include "Visualizer.h"
 #include "Util.h"
@@ -61,7 +60,7 @@ namespace ark {
 
     void Visualizer::visualizeHand(const cv::Mat & background, cv::Mat & output,
                 Hand * hand, double display,
-                const std::vector<boost::shared_ptr<FramePlane> > * touch_planes)
+                const std::vector<std::shared_ptr<FramePlane> > * touch_planes)
     {
         if (background.type() == CV_32FC3)
         {

@@ -15,9 +15,8 @@ namespace ark {
         surfaceArea = util::surfaceArea(fullMapSize, *points, *points_xyz);
     }
 
-    FramePlane::FramePlane(Vec3f v, boost::shared_ptr<std::vector<Point2i>> points_ij,
-        boost::shared_ptr<std::vector<Vec3f>> points_xyz, const cv::Mat & depth_map, 
-        const ObjectParams * params, bool sorted, int points_to_use) 
+    FramePlane::FramePlane(Vec3f v, VecP2iPtr points_ij, VecV3fPtr points_xyz, 
+        const cv::Mat & depth_map, const ObjectParams * params, bool sorted, int points_to_use) 
         :  equation(v), 
            FrameObject(points_ij, points_xyz, depth_map, params, sorted, points_to_use)
     {

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "stdafx.h"
 #include "version.h"
+#include <vector>
 #include "FrameObject.h"
 
 namespace ark {
@@ -37,9 +37,9 @@ namespace ark {
          * @param sorted if true, assumes that 'points' is already ordered and skips sorting to save time.
          * @param points_to_use optionally, the number of points in 'points' to use for the object. By default, uses all points.
          */
-        FramePlane(Vec3f v, boost::shared_ptr<std::vector<Point2i>> points_ij, 
-                boost::shared_ptr<std::vector<Vec3f>> points_xyz, const cv::Mat & depth_map,
-                const ObjectParams * params = nullptr, bool sorted = false, int points_to_use = -1);
+        FramePlane(Vec3f v, VecP2iPtr points_ij, VecV3fPtr points_xyz,
+            const cv::Mat & depth_map, const ObjectParams * params = nullptr,
+            bool sorted = false, int points_to_use = -1);
 
         /**
          * Contains the coefficients of the plane equation
@@ -85,8 +85,8 @@ namespace ark {
          * @return euclidean distance
          */
         float distanceToPoint(const Vec3f & point) const;
-    };
 
-    /* Shared pointer for FramePlane **/
-    typedef boost::shared_ptr<FramePlane> FramePlanePtr;
+        /** Shared pointer to a FramePlane */
+        typedef std::shared_ptr<FramePlane> Ptr;
+    };
 }

@@ -65,7 +65,7 @@ namespace ark {
         initializeObject();
     }
 
-    Hand::Hand(boost::shared_ptr<std::vector<Point2i>> points_ij, boost::shared_ptr<std::vector<Vec3f>> points_xyz, const cv::Mat & depth_map, const ObjectParams * params, bool sorted, int points_to_use)
+    Hand::Hand(std::shared_ptr<std::vector<Point2i>> points_ij, std::shared_ptr<std::vector<Vec3f>> points_xyz, const cv::Mat & depth_map, const ObjectParams * params, bool sorted, int points_to_use)
         : FrameObject(points_ij, points_xyz, depth_map, params, sorted, points_to_use)
     {
         initializeObject();
@@ -827,7 +827,7 @@ namespace ark {
         return (int)output.size();
     }
 
-    int Hand::touchingPlanes(const std::vector<boost::shared_ptr<FramePlane>>& planes,
+    int Hand::touchingPlanes(const std::vector<std::shared_ptr<FramePlane>>& planes,
         std::vector<std::pair<int, std::vector<int> >>& output, double threshold, bool extrapolate) const
     {
         output.clear();

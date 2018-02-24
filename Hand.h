@@ -38,8 +38,8 @@ namespace ark {
         * @param sorted if true, assumes that 'points' is already ordered and skips sorting to save time.
         * @param points_to_use optionally, the number of points in 'points' to use for the object. By default, uses all points.
         */
-        Hand(boost::shared_ptr<std::vector<Point2i>> points_ij,
-            boost::shared_ptr<std::vector<Vec3f>> points_xyz,
+        Hand(std::shared_ptr<std::vector<Point2i>> points_ij,
+            std::shared_ptr<std::vector<Vec3f>> points_xyz,
             const cv::Mat & depth_map,
             const ObjectParams * params = nullptr,
             bool sorted = false,
@@ -167,7 +167,7 @@ namespace ark {
         *        else, only use the detected portion of the plane.
         * @return the number of fingers in contact with any plane at all
         */
-        int touchingPlanes(const std::vector<boost::shared_ptr<FramePlane> > & planes,
+        int touchingPlanes(const std::vector<std::shared_ptr<FramePlane> > & planes,
             std::vector<std::pair<int, std::vector<int> > > & output, 
             double threshold = 0.0002,
             bool extrapolate = true) const;
@@ -176,6 +176,9 @@ namespace ark {
         * True if this object is a valid hand (queryFrameObjects/queryFrameHands will only return valid hands).
         */
         bool isValidHand() const;
+
+        /** Shared pointer to a Hand */
+        typedef std::shared_ptr<Hand> Ptr;
 
     protected:
         /**
@@ -270,9 +273,5 @@ namespace ark {
         * Edge connected implies that object is likely connected to the user's body (hand, arm, etc)
         */
         bool rightEdgeConnected = false;
-
     };
-
-    /* Shared pointer for Hand **/
-    typedef boost::shared_ptr<Hand> HandPtr;
 }

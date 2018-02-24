@@ -16,8 +16,8 @@ namespace ark {
     FrameObject::FrameObject(const cv::Mat & depthMap, const ObjectParams * params) {
         if (params == nullptr) params = &ObjectParams::DEFAULT;
 
-        auto points = boost::make_shared<std::vector<Point2i>>();
-        auto points_xyz = boost::make_shared<std::vector<Vec3f>>();
+        auto points = std::make_shared<std::vector<Point2i>>();
+        auto points_xyz = std::make_shared<std::vector<Vec3f>>();
 
         for (int r = 0; r < depthMap.rows; ++r) {
             const Vec3f * ptr = depthMap.ptr<Vec3f>(r);
@@ -32,8 +32,8 @@ namespace ark {
         initializeFrameObject(points, points_xyz, depthMap, params);
     }
 
-    FrameObject::FrameObject(boost::shared_ptr<std::vector<Point2i>> points_ij, 
-        boost::shared_ptr<std::vector<Vec3f>> points_xyz, const cv::Mat & depth_map,
+    FrameObject::FrameObject(std::shared_ptr<std::vector<Point2i>> points_ij, 
+        std::shared_ptr<std::vector<Vec3f>> points_xyz, const cv::Mat & depth_map,
         const ObjectParams * params,
         bool sorted, int points_to_use) {
 
@@ -248,7 +248,7 @@ namespace ark {
         }
     }
 
-    void FrameObject::initializeFrameObject(boost::shared_ptr<std::vector<Point2i>> points_ij, boost::shared_ptr<std::vector<Vec3f>> points_xyz, const cv::Mat & depth_map, const ObjectParams * params, bool sorted, int points_to_use)
+    void FrameObject::initializeFrameObject(std::shared_ptr<std::vector<Point2i>> points_ij, std::shared_ptr<std::vector<Vec3f>> points_xyz, const cv::Mat & depth_map, const ObjectParams * params, bool sorted, int points_to_use)
     {
         if (params == nullptr) {
             params = &ObjectParams::DEFAULT;

@@ -36,8 +36,8 @@ namespace ark {
         * @param sorted if true, assumes that 'points' is already ordered and skips sorting to save time.
         * @param points_to_use optionally, the number of points in 'points' to use for the object. By default, uses all points.
         */
-        FrameObject(boost::shared_ptr<std::vector<Point2i>> points_ij,
-            boost::shared_ptr<std::vector<Vec3f>> points_xyz,
+        FrameObject(std::shared_ptr<std::vector<Point2i>> points_ij,
+            std::shared_ptr<std::vector<Vec3f>> points_xyz,
             const cv::Mat & depth_map,
             const ObjectParams * params = nullptr,
             bool sorted = false,
@@ -109,16 +109,19 @@ namespace ark {
         */
         const std::vector<Point2i> & getConvexHull();
 
+        /** Shared pointer to a FrameObject */
+        typedef std::shared_ptr<FrameObject> Ptr;
+
     protected:
         /**
          * Stores ij coordinates of points in this cluster
          */
-        boost::shared_ptr<std::vector<Point2i>> points = nullptr;
+        std::shared_ptr<std::vector<Point2i>> points = nullptr;
 
         /**
          * Stores xyz coordinates of points in this cluster
          */
-        boost::shared_ptr<std::vector<Vec3f>> points_xyz = nullptr;
+        std::shared_ptr<std::vector<Vec3f>> points_xyz = nullptr;
 
         /**
          * Stores number of points in 'points' used in the cluster
@@ -253,15 +256,12 @@ namespace ark {
 
     private:
         /** Constructor helper */
-        void initializeFrameObject(boost::shared_ptr<std::vector<Point2i>> points_ij,
-            boost::shared_ptr<std::vector<Vec3f>> points_xyz,
+        void initializeFrameObject(std::shared_ptr<std::vector<Point2i>> points_ij,
+            std::shared_ptr<std::vector<Vec3f>> points_xyz,
             const cv::Mat & depth_map,
             const ObjectParams * params = nullptr,
             bool sorted = false,
             int points_to_use = -1
         );
     };
-
-    /* Shared pointer for FrameObject **/
-    typedef boost::shared_ptr<FrameObject> FrameObjectPtr;
 }

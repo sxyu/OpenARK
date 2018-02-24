@@ -74,7 +74,7 @@ namespace ark {
         isCached |= FLAG_NORMALS;
     }
 
-    std::vector<HandPtr> & DepthCamera::getFrameHands(const ObjectParams * params, bool elim_planes)
+    std::vector<Hand::Ptr> & DepthCamera::getFrameHands(const ObjectParams * params, bool elim_planes)
     {
         if (!this->xyzMap.data || (isCached & FLAG_FRM_HANDS)) return hands;
 
@@ -104,9 +104,9 @@ namespace ark {
         // 2. eliminate large planes
 
         if (elim_planes){
-            std::vector<FramePlanePtr> planes = getFramePlanes(params);
+            std::vector<FramePlane::Ptr> planes = getFramePlanes(params);
             if (planes.size()) {
-                for (FramePlanePtr plane : planes) {
+                for (FramePlane::Ptr plane : planes) {
                     util::removePlane<uchar>(xyzMap, floodFillMap, plane->equation,
                         params->handPlaneMinNorm);
                 }
@@ -114,7 +114,7 @@ namespace ark {
         }
 
         // 3. flood fill on point cloud 
-        boost::shared_ptr<Hand> bestHandObject;
+        std::shared_ptr<Hand> bestHandObject;
         float closestHandDist = FLT_MAX;
 
         std::vector<Point2i> allIjPoints(R * C);
@@ -139,15 +139,15 @@ namespace ark {
 
                     if (points_in_comp >= CLUSTER_MIN_POINTS)
                     {
-                        auto ijPoints = boost::make_shared<std::vector<Point2i> >
+                        auto ijPoints = std::make_shared<std::vector<Point2i> >
                             (allIjPoints.begin(), allIjPoints.begin() + points_in_comp);
-                        auto xyzPoints = boost::make_shared<std::vector<Vec3f> >
+                        auto xyzPoints = std::make_shared<std::vector<Vec3f> >
                             (allXyzPoints.begin(), allXyzPoints.begin() + points_in_comp);
 
                         // 4. for each cluster, test if hand
 
                         // if matching required conditions, construct 3D object
-                        auto handPtr = boost::make_shared<Hand>(ijPoints, xyzPoints, xyzMap,
+                        Hand::Ptr handPtr = std::make_shared<Hand>(ijPoints, xyzPoints, xyzMap,
                                 params, false, points_in_comp);
 
                         if (handPtr->isValidHand()) {
@@ -180,7 +180,7 @@ namespace ark {
         return hands;
     }
 
-    std::vector<FramePlanePtr> & DepthCamera::getFramePlanes(const ObjectParams * params)
+    std::vector<FramePlane::Ptr> & DepthCamera::getFramePlanes(const ObjectParams * params)
     {
         if (!this->xyzMap.data || (isCached & FLAG_FRM_PLANES)) return framePlanes;
 
@@ -194,7 +194,7 @@ namespace ark {
         detectPlaneHelper(xyzMap, equations, points, pointsXYZ, params);
 
         for (uint i = 0; i < equations.size(); ++i) {
-            auto planePtr = boost::make_shared<FramePlane>
+            auto planePtr = std::make_shared<FramePlane>
                 (equations[i], points[i], pointsXYZ[i], xyzMap, params);
 
             if (planePtr->getSurfArea() > params->planeMinArea) {
@@ -233,7 +233,7 @@ namespace ark {
         return framePlanes;
     }
 
-    std::vector<FrameObjectPtr> & DepthCamera::getFrameObjects(const ObjectParams * params)
+    std::vector<FrameObject::Ptr> & DepthCamera::getFrameObjects(const ObjectParams * params)
     {        
         if (!this->xyzMap.data || (isCached & FLAG_FRM_OBJS)) return frameObjects;
         frameObjects.clear();
@@ -501,7 +501,7 @@ namespace ark {
 
                 if (delta.count() < timePerFrame) {
                     long long ms = (long long)(timePerFrame - delta.count()) / 1e6f;
-                    boost::this_thread::sleep_for(boost::chrono::milliseconds(ms));
+                    std::this_thread::sleep_for(std::chrono::milliseconds(ms));
                 }
                 lastTime = currTime;
             }
@@ -543,10 +543,10 @@ namespace ark {
 
         // 2. find 'subplanes' i.e. all flat objects visible in frame and combine similar ones
         // stores points on each plane
-        std::vector<boost::shared_ptr<std::vector<Point2i> > > planePointsIJ;
+        std::vector<std::shared_ptr<std::vector<Point2i> > > planePointsIJ;
 
         // stores points (in 3D coords) on each plane
-        std::vector<boost::shared_ptr<std::vector<Vec3f> > > planePointsXYZ;
+        std::vector<std::shared_ptr<std::vector<Vec3f> > > planePointsXYZ;
 
         // equations of the planes: ax + by - z + c = 0
         std::vector<Vec3f> planeEquation;
@@ -601,14 +601,14 @@ namespace ark {
                     }
 
                     // pointers to point storage in planePointsIJ/XYZ
-                    boost::shared_ptr<std::vector<Point2i>> pointStore;
-                    boost::shared_ptr<std::vector<Vec3f>> pointStoreXyz;
+                    std::shared_ptr<std::vector<Point2i>> pointStore;
+                    std::shared_ptr<std::vector<Vec3f>> pointStoreXyz;
 
                     if (i >= planeEquation.size()) {
                         // no similar plane found
                         planeEquation.push_back(eqn);
-                        planePointsIJ.emplace_back(boost::make_shared<std::vector<Point2i> >());
-                        planePointsXYZ.emplace_back(boost::make_shared<std::vector<Vec3f> >());
+                        planePointsIJ.emplace_back(std::make_shared<std::vector<Point2i> >());
+                        planePointsXYZ.emplace_back(std::make_shared<std::vector<Vec3f> >());
                         pointStore = *planePointsIJ.rbegin();
                         pointStoreXyz = *planePointsXYZ.rbegin();
                     }

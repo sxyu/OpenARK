@@ -61,6 +61,6 @@ namespace ark {
     typedef cv::Vec3i Vec3i;
 
     // generic smart pointer shorthands
-    typedef boost::shared_ptr<std::vector<Point2i> > VecP2iPtr;
-    typedef boost::shared_ptr<std::vector<Vec3f> > VecV3fPtr;
+    typedef std::shared_ptr<std::vector<Point2i> > VecP2iPtr;
+    typedef std::shared_ptr<std::vector<Vec3f> > VecV3fPtr;
 }

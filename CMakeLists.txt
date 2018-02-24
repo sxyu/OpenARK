@@ -23,9 +23,9 @@ include(CheckCXXCompilerFlag)
 CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
 CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
 if(COMPILER_SUPPORTS_CXX11)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 /EHsc")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 elseif(COMPILER_SUPPORTS_CXX0X)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x /EHsc")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 else()
     message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
 endif()
@@ -79,7 +79,6 @@ set(
   Webcam.cpp 
   DepthCamera.cpp 
   RGBCamera.cpp
-  UDPSender.cpp 
   StreamingAverager.cpp 
   Calibration.cpp 
   Util.cpp	
@@ -96,14 +95,14 @@ set(
   Webcam.h
   DepthCamera.h 
   RGBCamera.h
-  UDPSender.h 
   StreamingAverager.h 
   Calibration.h 
   Util.h	
   Visualizer.h	
   Converter.h
-  stdafx.h
   HandClassifier.h
+  Allocator.h MemoryPool.h
+  stdafx.h
 )
 
 if(NOT RSSDK_FOUND)
@@ -125,7 +124,7 @@ endif(NOT PMDSDK_FOUND)
 configure_file(Version.h.in ${PROJECT_SOURCE_DIR}/version.h)
 set(HEADERS ${HEADERS} version.h)
 
-source_group("Header Files" *.h)
+source_group("Header Files" REGULAR_EXPRESSION ".*\\.(h|hpp)")
 
 macro(add_msvc_pch PrecompiledHeader PrecompiledSource SourcesVar)
   if(MSVC)
@@ -150,6 +149,9 @@ endmacro(add_msvc_pch)
 if (MSVC)
     add_msvc_pch("stdafx.h" "stdafx.cpp" SOURCES)
     add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
+    set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:LIBCMT")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MD")
 endif(MSVC)
 
 add_executable( ${DEMO_NAME} main.cpp ${SOURCES} ${HEADERS})
@@ -158,7 +160,7 @@ if(${BUILD_LIB})
     add_library(${LIB_NAME} STATIC core.h ${SOURCES} ${HEADERS})
     set_target_properties( ${LIB_NAME} PROPERTIES OUTPUT_NAME 
             "openark_${OpenARK_VERSION_MAJOR}_${OpenARK_VERSION_MINOR}_${OpenARK_VERSION_PATCH}")
-    set_target_properties(${LIB_NAME} PROPERTIES COMPILE_FLAGS "/MDd")
+    set_target_properties(${LIB_NAME} PROPERTIES COMPILE_FLAGS "/MD")
     set_property(TARGET ${LIB_NAME} PROPERTY DBG_POSTFIX d)
     target_link_libraries( ${LIB_NAME} ${DEPENDENCIES} )
 endif(${BUILD_LIB})

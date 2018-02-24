@@ -29,11 +29,11 @@ int main() {
     printf("VIEWER BACKGROUNDS:\n1 = IR Image, 2 = Depth Image, 3 = Normal Map, 0 = None\n\n");
     printf("HAND DETECTION OPTIONS:\nS = Enable/Disable SVM, C = Enforce/Unenforce Edge Connected Criterion\n\n");
     printf("MISCELLANEOUS:\nA = Measure Surface Area (Of Hands and Planes)\n");
-    boost::shared_ptr<DepthCamera> camera;
+    std::shared_ptr<DepthCamera> camera;
 
 #ifdef PMDSDK_ENABLED
     if (!strcmp(OPENARK_CAMERA_TYPE, "pmd")) {
-        camera = boost::make_shared<PMDCamera>();
+        camera = std::make_shared<PMDCamera>();
     }
     else {
         return -1;
@@ -41,7 +41,7 @@ int main() {
 #endif
 #ifdef RSSDK_ENABLED
     if (!strcmp(OPENARK_CAMERA_TYPE, "sr300")) {
-        camera = boost::make_shared<SR300Camera>();
+        camera = std::make_shared<SR300Camera>();
     }
     else {
         return -1;
@@ -88,8 +88,8 @@ int main() {
         params.handUseSVM = svmEnabled;
         params.handRequireEdgeConnected = reqEdgeConnected;
 
-        std::vector<ark::HandPtr> hands;
-        std::vector<ark::FramePlanePtr> planes;
+        std::vector<ark::Hand::Ptr> hands;
+        std::vector<ark::FramePlane::Ptr> planes;
         
         if (planeLayer || handLayer) {
             // even if only hand layer is enabled, 
@@ -171,7 +171,7 @@ int main() {
 
         // draw hands
         if (handLayer) {
-            for (ark::HandPtr hand : hands) {
+            for (ark::Hand::Ptr hand : hands) {
                 double dispVal;
                 if (measureSurfArea) {
                     dispVal = hand->getSurfArea();
