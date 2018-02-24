@@ -195,7 +195,7 @@ namespace ark {
 
         std::vector<std::vector<Point2i> > contours;
 
-        cv::UMat thresh;
+        cv::Mat thresh;
         cv::threshold(grayMap, thresh, 25, 255, cv::THRESH_BINARY);
         cv::findContours(thresh, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE,
             2 * topLeftPt);

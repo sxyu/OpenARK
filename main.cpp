@@ -52,7 +52,7 @@ int main() {
     srand(time(NULL));
 
     // store frame & FPS information
-    const int FPS_CYCLE_FRAMES = 10; // number of frames to average FPS over (FPS 'cycle' length)
+    const int FPS_CYCLE_FRAMES = 8; // number of frames to average FPS over (FPS 'cycle' length)
     clock_t currCycleStartTime = 0; // start time of current cycle
     float currFPS; // current FPS
     int currFrame = 0; // current frame number (since launch/last pause)
@@ -203,8 +203,9 @@ int main() {
 
         // update FPS
         if (currFrame % FPS_CYCLE_FRAMES == 0) {
-            currFPS = (float) FPS_CYCLE_FRAMES * CLOCKS_PER_SEC / (clock() - currCycleStartTime);
-            currCycleStartTime = clock();
+            clock_t now = clock();
+            currFPS = (float) FPS_CYCLE_FRAMES * CLOCKS_PER_SEC / (now - currCycleStartTime);
+            currCycleStartTime = now;
         }
 
         if (currFrame > FPS_CYCLE_FRAMES && !camera->badInput()) {
