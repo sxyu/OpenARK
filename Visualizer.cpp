@@ -26,9 +26,9 @@ namespace ark {
 
     void Visualizer::visualizeXYZMap(const cv::Mat & xyzMap, cv::Mat & output)
     {
-        cv::Mat channels[3];
-        cv::split(xyzMap, channels);
-        visualizeDepthMap(channels[2], output);
+        cv::Mat depth;
+        cv::extractChannel(xyzMap, depth, 2);
+        visualizeDepthMap(depth, output);
     }
 
     void Visualizer::visualizeNormalMap(const cv::Mat & normal_map, cv::Mat & output, 

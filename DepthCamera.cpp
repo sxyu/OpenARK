@@ -137,8 +137,8 @@ namespace ark {
                 {
                     int points_in_comp = util::floodFill(xyzMap, Point2i(c, r),
                         params->handClusterMaxDistance,
-                        &allIJPoints, &allXYZPoints, nullptr, 1, 4,
-                        params->handClusterMaxDistance * 12, &floodFillMap);
+                        &allIJPoints, &allXYZPoints, nullptr, 1, 6,
+                        params->handClusterMaxDistance * 8, &floodFillMap);
 
                     if (points_in_comp >= CLUSTER_MIN_POINTS)
                     {

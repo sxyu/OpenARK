@@ -62,13 +62,15 @@ namespace ark {
     Hand::Hand(const cv::Mat & cluster_depth_map, const ObjectParams * params)
         : FrameObject(cluster_depth_map, params)
     {
-        initializeObject();
+        // Determine whether cluster is a hand
+        isHand = checkForHand();
     }
 
     Hand::Hand(std::shared_ptr<std::vector<Point2i>> points_ij, std::shared_ptr<std::vector<Vec3f>> points_xyz, const cv::Mat & depth_map, const ObjectParams * params, bool sorted, int points_to_use)
         : FrameObject(points_ij, points_xyz, depth_map, params, sorted, points_to_use)
     {
-        initializeObject();
+        // Determine whether cluster is a hand
+        isHand = checkForHand();
     }
 
     Hand::~Hand() { }
@@ -77,23 +79,14 @@ namespace ark {
         return (int)fingersXYZ.size();
     }
 
-    void Hand::initializeObject()
-    {
-        checkEdgeConnected();
-        // if not connected skip
-        if (!params->handRequireEdgeConnected || leftEdgeConnected || rightEdgeConnected) {
-            surfaceArea = util::surfaceArea(fullMapSize, *points, *points_xyz, num_points);
-
-            // surface area criterion
-            if (surfaceArea >= params->handMinArea && surfaceArea <= params->handMaxArea) {
-                // Determine whether cluster is a hand
-                isHand = checkForHand();
-            }
-        }
-    }
-
     bool Hand::checkForHand()
     {
+        checkEdgeConnected();
+        // if not connected, stop
+        if (params->handRequireEdgeConnected && !leftEdgeConnected && !rightEdgeConnected) {
+            return false;
+        }
+
 #ifdef DEBUG
         cv::Mat visual = cv::Mat::zeros(fullMapSize.height, fullMapSize.width, CV_8UC3);
         cv::Mat defectVisual = cv::Mat::zeros(fullMapSize.height, fullMapSize.width, CV_8UC3);
@@ -288,6 +281,12 @@ namespace ark {
         num_points = (int)aboveWristPointsIJ.size();
         points->swap(aboveWristPointsIJ);
         points_xyz->swap(aboveWristPointsXYZ);
+
+        // if too small/large, stop
+        surfaceArea = util::surfaceArea(fullMapSize, *points, *points_xyz, num_points);
+        if (surfaceArea < params->handMinArea || surfaceArea > params->handMaxArea) {
+            return false;
+        }
 
         // recompute contour
         computeContour(xyzMap, points.get(), points_xyz.get(), topLeftPt, num_points);
@@ -570,7 +569,7 @@ namespace ark {
                     if (util::pointOnEdge(fullMapSize, convexPt, params->bottomEdgeThresh,
                         params->sideEdgeThresh)) continue;
 
-                    Vec3f convexPt_xyz = util::averageAroundPoint(xyzMap, convexPt - topLeftPt, 22);
+                    Vec3f convexPt_xyz = util::averageAroundPoint(xyzMap, convexPt - topLeftPt, 10);
 
                     double dist = util::euclideanDistance(convexPt_xyz, this->palmCenterXYZ);
                     double slope = (double)(this->palmCenterIJ.y - convexPt.y) / abs(convexPt.x - this->palmCenterIJ.x);

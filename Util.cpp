@@ -305,31 +305,19 @@ namespace ark {
         template void removePlane<float>(const cv::Mat & ref_cloud, cv::Mat & image, const Vec3f & plane_equation, float threshold, cv::Mat * mask, uchar mask_color);
         template void removePlane<Vec3f>(const cv::Mat & ref_cloud, cv::Mat & image, const Vec3f & plane_equation, float threshold, cv::Mat * mask, uchar mask_color);
 
-        Vec3f averageAroundPoint(const cv::Mat & xyz_map, Point2i pt, int radius)
+        Vec3f averageAroundPoint(const cv::Mat & xyz_map, const Point2i & pt, int radius)
         {
-            int count = 0;
-            Vec3f average(0, 0, 0);
+            int t = std::max(0, pt.y - radius), b = std::min(xyz_map.rows - 1, pt.y + radius);
+            if (t >= b) return 0;
 
-            for (int r = std::max(0, pt.y - radius); r <= pt.y + radius; ++r)
-            {
-                if (r >= xyz_map.rows) break;
+            int l = std::max(0, pt.x - radius), r = std::min(xyz_map.cols - 1, pt.x + radius);
+            if (l >= r) return 0;
 
-                const Vec3f * ptr = xyz_map.ptr<Vec3f>(r);
-                for (int c = std::max(0, pt.x - radius); c <= pt.x + radius; ++c)
-                {
-                    if (c >= xyz_map.cols) break;
+            cv::Mat region = xyz_map(cv::Rect(l, t, r - l, b - t)), depth;
+            cv::extractChannel(region, depth, 2);
 
-                    if (ptr[c][2] > 0)
-                    {
-                        // add to total
-                        average += ptr[c];
-                        ++count;
-                    }
-                }
-            }
-
-            if (count == 0) return 0;
-            return average / count;
+            cv::Scalar mean = cv::mean(region, depth > 0.0f);
+            return Vec3f(mean[0], mean[1], mean[2]);
         }
 
         int removeOutliers(const std::vector<Vec3f> & data, std::vector<Vec3f>& output,
@@ -376,31 +364,16 @@ namespace ark {
             return NUM_OUTPUT_PTS;
         }
 
-        Vec3f normalAroundPoint(const cv::Mat & xyz_map, const Point2i & pt, int radius)
+        Vec3f normalAtPoint(const cv::Mat & xyz_map, const Point2i & pt, int radius)
         {
             const Vec3f & center = xyz_map.at<Vec3f>(pt);
             if (center[2] == 0) return 0;
 
-            bool p[4]; Vec3f v[4];
+            int xr = (pt.x < radius) ? radius : -radius;
+            int yr = (pt.y < radius) ? radius : -radius;
 
-            p[0] = pt.x >= radius;
-            if (p[0]) v[0] = xyz_map.at<Vec3f>(pt.y, pt.x - radius) - center;
-
-            p[1] = pt.y >= radius;
-            if (p[1]) v[1] = xyz_map.at<Vec3f>(pt.y - radius, pt.x) - center;
-
-            p[2] = pt.x < xyz_map.cols - radius;
-            if (p[2]) v[2] = xyz_map.at<Vec3f>(pt.y, pt.x + radius) - center;
-
-            p[3] = pt.y < xyz_map.rows - radius;
-            if (p[3]) v[3] = xyz_map.at<Vec3f>(pt.y + radius, pt.x) - center;
-
-            Vec3f average = (p[0] && p[3]) ? normalize(v[0].cross(v[3])) : 0;
-            for (int i = 0; i < 3; ++i) {
-                if (p[i] && p[i + 1]) average += normalize(v[i].cross(v[i + 1]));
-            }
-
-            return normalize(average);
+            return normalize((xyz_map.at<Vec3f>(pt.y + yr, pt.x) - center).cross(
+                              xyz_map.at<Vec3f>(pt.y, pt.x + xr) - center));
         }
 
         void computeNormalMap(const cv::Mat & xyz_map, cv::Mat & output_mat,
@@ -423,7 +396,7 @@ namespace ark {
                 for (int r = range.start; r < range.end; ++r) {
                     int i = r / C * multiplier, j = r % C * multiplier;
                     output_mat.ptr<Vec3f>(i)[j] =
-                        util::normalAroundPoint(xyz_map,
+                        util::normalAtPoint(xyz_map,
                             Point2i(j, i) * (resolution / step), normal_dist);
                 }
             });
@@ -434,33 +407,18 @@ namespace ark {
         }
 
         double averageDepth(cv::Mat xyzMap) {
-            double total = 0.0;
-            int numPts = 0;
-
-            for (int r = 0; r < xyzMap.rows; ++r)
-            {
-                Vec3f * ptr = xyzMap.ptr<Vec3f>(r);
-                for (int c = 0; c < xyzMap.cols; ++c)
-                {
-                    if (ptr[c][2] != 0) {
-                        total += ptr[c][2];
-                        ++numPts;
-                    }
-                }
-            }
-
-            return total / numPts;
+            cv::Mat depth; cv::extractChannel(xyzMap, depth, 2);
+            return cv::mean(xyzMap, depth > 0.0f)[0];
         }
 
         Point2i findCentroid(cv::Mat xyzMap)
         {
-            cv::Mat channels[3];
-            cv::split(xyzMap, channels);
+            cv::Mat depth;
+            cv::extractChannel(xyzMap, depth, 2);
             //using image moments to find center of mass of the depth image
-            auto m = cv::moments(channels[2], false);
+            auto m = cv::moments(depth, false);
             //Cx=M10/M00 and Cy=M01/M00
-            Point2i center(m.m10 / m.m00, m.m01 / m.m00);
-            return center;
+            return Point2i(m.m10 / m.m00, m.m01 / m.m00);
         }
 
         static inline float getTriangleArea(Vec3f a, Vec3f b, Vec3f c)

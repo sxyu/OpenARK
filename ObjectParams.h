@@ -59,9 +59,9 @@ namespace ark {
 
         /**
          * minimum surface area (square meters) of hand
-         * default: 0.012
+         * default: 0.008
          */
-        double handMinArea = 0.012;
+        double handMinArea = 0.008;
 
         /**
          * maximum surface area (square meters) of hand
@@ -299,9 +299,9 @@ namespace ark {
 
         /**
          * minimum surface area (m^2) of a combined plane
-         * default: 0.0300
+         * default: 0.0150
          */
-        double planeMinArea = 0.0300;
+        double planeMinArea = 0.0150;
 
         /**
          * minimum (# equation inliers / # total points on screen * normal resolution^2)
@@ -314,15 +314,15 @@ namespace ark {
         /**
          * minimum (# points / # total points on screen * normal resolution^2)
          * in a component of a greater plane
-         * default: 0.0100
+         * default: 0.0050
          */
-        float subplaneMinPoints = 0.0100f;
+        float subplaneMinPoints = 0.0050f;
 
         /**
          * minimum surface area (m^2) of a component of a greater plane
-         * default: 0.009
+         * default: 0.005
          */
-        double subplaneMinArea = 0.009;
+        double subplaneMinArea = 0.005;
 
         /**
          * minimum norm (r^2) between the equations of two 'subplanes'

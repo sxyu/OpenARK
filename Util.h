@@ -131,16 +131,17 @@ namespace ark {
         * @param radius number of neighboring points to be used for computing the average
         * @return average (x,y,z) value around the point of interest
         */
-        Vec3f averageAroundPoint(const cv::Mat & img, Point2i pt, int radius = 5);
+        Vec3f averageAroundPoint(const cv::Mat & img, const Point2i & pt, int radius = 5);
 
         /**
-        * Find the surface normal vector around a point.
+        * Find the approximate surface normal vector at a point on an XYZ map by computing
+        * the cross product of two vectors to nearby points.
         * @param img base image to use
         * @param pt the point of interest
-        * @param radius number of neighboring points to be used for computing the average
-        * @return surface normal vector (the one facing viewer) at the point of interest
+        * @param radius length of vectors to use for computing the cross product
+        * @return normalized surface normal vector (the one facing viewer) at the point of interest
         */
-        Vec3f normalAroundPoint(const cv::Mat & img, const Point2i & pt, int radius = 3);
+        Vec3f normalAtPoint(const cv::Mat & img, const Point2i & pt, int radius = 3);
 
         /**
         * Eliminate outliers in a point cloud by considering the 'influence' of each point

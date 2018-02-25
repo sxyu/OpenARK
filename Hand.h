@@ -197,11 +197,6 @@ namespace ark {
         void checkEdgeConnected();
 
         /**
-        * Subroutine for computing the largest contour, convex hull, etc. for this 3D object.
-        */
-        void initializeObject();
-
-        /**
         * (x,y,z) position of the center of the hand
         */
         Vec3f palmCenterXYZ;
