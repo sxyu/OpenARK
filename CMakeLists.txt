@@ -101,7 +101,6 @@ set(
   Visualizer.h	
   Converter.h
   HandClassifier.h
-  Allocator.h MemoryPool.h
   stdafx.h
 )
 

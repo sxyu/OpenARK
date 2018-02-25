@@ -117,8 +117,11 @@ namespace ark {
         std::shared_ptr<Hand> bestHandObject;
         float closestHandDist = FLT_MAX;
 
-        std::vector<Point2i> allIjPoints(R * C);
-        std::vector<Vec3f> allXyzPoints(R * C);
+        std::vector<Point2i> allIJPoints;
+        std::vector<Vec3f> allXYZPoints;
+
+        allIJPoints.reserve(R * C);
+        allXYZPoints.reserve(R * C);
 
         // compute the minimum number of points in a cluster according to params
         const int CLUSTER_MIN_POINTS = (int) (params->handClusterMinPoints * R * C);
@@ -134,15 +137,13 @@ namespace ark {
                 {
                     int points_in_comp = util::floodFill(xyzMap, Point2i(c, r),
                         params->handClusterMaxDistance,
-                        &allIjPoints, &allXyzPoints, nullptr, 1, 4,
+                        &allIJPoints, &allXYZPoints, nullptr, 1, 4,
                         params->handClusterMaxDistance * 12, &floodFillMap);
 
                     if (points_in_comp >= CLUSTER_MIN_POINTS)
                     {
-                        auto ijPoints = std::make_shared<std::vector<Point2i> >
-                            (allIjPoints.begin(), allIjPoints.begin() + points_in_comp);
-                        auto xyzPoints = std::make_shared<std::vector<Vec3f> >
-                            (allXyzPoints.begin(), allXyzPoints.begin() + points_in_comp);
+                        VecP2iPtr ijPoints = std::make_shared<std::vector<Point2i> > (allIJPoints);
+                        VecV3fPtr xyzPoints = std::make_shared<std::vector<Vec3f> > (allXYZPoints);
 
                         // 4. for each cluster, test if hand
 
@@ -539,7 +540,8 @@ namespace ark {
         }
 
         int compId = -1;
-        std::vector<Point2i> allIndices(N);
+        std::vector<Point2i> allIndices;
+        allIndices.reserve(N);
 
         // 2. find 'subplanes' i.e. all flat objects visible in frame and combine similar ones
         // stores points on each plane

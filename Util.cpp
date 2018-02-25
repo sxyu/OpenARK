@@ -799,6 +799,9 @@ namespace ark {
             uchar * visPtr;
             bool sw;
 
+            if (output_ij_points) output_ij_points->clear();
+            if (output_xyz_points) output_xyz_points->clear();
+
             // begin DFS / scanline hybrid flood fill
             while (stkSize > 0) {
                 // pop current point from stack
@@ -822,8 +825,8 @@ namespace ark {
 
                     // output this point to mask, etc.
                     if (output_mask) oPtr[pt.x] = *xyz;
-                    if (output_ij_points) output_ij_points->at(total) = pt;
-                    if (output_xyz_points) output_xyz_points->at(total) = *xyz;
+                    if (output_ij_points) output_ij_points->push_back(pt);
+                    if (output_xyz_points) output_xyz_points->push_back(*xyz);
 
                     // increment the total number of points
                     ++total;

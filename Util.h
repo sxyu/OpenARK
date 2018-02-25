@@ -222,10 +222,8 @@ namespace ark {
          * @param [in] xyz_map the input point cloud
          * @param seed seed point
          * @param thresh maximum euclidean distance allowed between neighbors
-         * @param [out] output_ij_points optionally, pointer to a vector for storing ij coords of
-                  the points in the component. Existing values on vector will be overwritten & vector expanded on demand. (set to NULL to disable)
-         * @param [out] output_xyz_points optionally, pointer to a vector for storing xyz coords of
-                  the points in the component. Existing values on vector will be overwritten & vector expanded on demand (set to NULL to disable) 
+         * @param [out] output_ij_points optionally, pointer to a vector for storing ij coords of the points in the component.
+         * @param [out] output_xyz_points optionally, pointer to a vector for storing xyz coords of the points in the component.
          * @param [out] output_mask optional output matrix for storing points visited by the floodfill (set to NULL to disable)
 
          * @param interval1 interval to adjacent points (e.g. if 2, adjacent points are (-2, 0), (0, 2), etc.)
