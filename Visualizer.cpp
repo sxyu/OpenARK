@@ -146,20 +146,20 @@ namespace ark {
                 sstr.str(),
                 (defects[i] + center) / 2 - Point2i(15, 0), 0,
                 0.4 * unitWid, cv::Scalar(0, 255, 255), 1);
-
-            if (display < FLT_MAX) {
-                // provided display text
-                sstr.str("");
-                sstr << std::setprecision(3) << std::fixed << display;
-                Point2i dispPt = center - Point2i((int)sstr.str().size() * 8, 0);
-                cv::putText(output, sstr.str(), dispPt, 0, 0.8, cv::Scalar(255, 255, 255), 1);
-            }
         }
-
-        // draw dominant direction faintly
+        
+        // draw dominant direction arrow
         Point2f dir = hand->getDominantDirection();
         cv::arrowedLine(output, Point2f(center), Point2f(center) + dir * 0.2,
             cv::Scalar(200, 200, 120), std::round(unitWid * 3), 8, 0, 0.3);
+            
+        if (display < FLT_MAX) {
+            // draw provided display text
+            std::stringstream sstr;
+            sstr << std::setprecision(3) << std::fixed << display;
+            Point2i dispPt = center - Point2i((int)sstr.str().size() * 8, 0);
+            cv::putText(output, sstr.str(), dispPt, 0, 0.8, cv::Scalar(255, 255, 255), 1);
+        }
     }
 
     void Visualizer::visualizeCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud)
