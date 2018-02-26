@@ -217,8 +217,7 @@ namespace ark {
 
         if (wristL < 0 || wristR < 0) {
 #ifdef DEBUG
-            cv::putText(visual, "WRIST NOT FOUND", Point2i(10, 30), 0, 0.5, 255);
-            cv::imshow("[Hand Debug]", visual);
+            std::cerr << "[Hand Debug]: WRIST NOT FOUND\n";
 #endif
             return false;
         }
@@ -245,9 +244,7 @@ namespace ark {
         // Eliminate by wrist width
         if (wristWidth < params->wristWidthMin || wristWidth > params->wristWidthMax) {
 #ifdef DEBUG
-            cv::putText(visual, "ELIMINATED BY WRIST WIDTH", Point2i(10, 30), 0, 0.5, 255);
-            cv::putText(visual, "Wrist Width:" + std::to_string(wristWidth), Point2i(10, 55), 0, 0.5, 255);
-            cv::imshow("[Hand Debug]", visual);
+            std::cerr << "[Hand Debug]: OBJECT ELIMINATED BY WRIST WIDTH (" << wristWidth << "m)\n";
 #endif
             return false;
         }
@@ -447,63 +444,39 @@ namespace ark {
                 Vec3f defect_xyz = util::averageAroundPoint(xyzMap, defect_ij, params->xyzAverageSize);
 
                 // compute a number of features used to eliminate finger candidates
-                double finger_length = util::euclideanDistance(finger_xyz, defect_xyz);
-                double centroid_defect_dist = util::euclideanDistance(this->palmCenterXYZ, defect_xyz);
-                double finger_defect_slope = (double)(defect_ij.y - finger_ij.y) / abs(defect_ij.x - finger_ij.x);
-                double finger_center_slope = (double)(center.y - finger_ij.y) / abs(center.x - finger_ij.x);
-                double centroid_defect_finger_angle =
-                    util::angleBetweenPoints(finger_ij, center, defect_ij);
+                float finger_length = util::euclideanDistance(finger_xyz, defect_xyz);
+                float centroid_defect_dist = util::euclideanDistance(this->palmCenterXYZ, defect_xyz);
+                float finger_defect_slope = (float)(defect_ij.y - finger_ij.y) / abs(defect_ij.x - finger_ij.x);
+                float finger_center_slope = (float)(center.y - finger_ij.y) / abs(center.x - finger_ij.x);
+                double centroid_defect_finger_angle = util::angleBetweenPoints(finger_ij, center, defect_ij);
 
-                // number of points to the defect
-                int points_to_defect = abs(fingerDefectCands[i] - fingerTipCands[i]);
-                points_to_defect = std::min(points_to_defect, (int)contour.size() - points_to_defect);
-
-                if (points_to_defect < 10)
-                    continue;
-
-                int curve_near_lo = std::max(2, points_to_defect / 20);
-                int curve_near_hi = curve_near_lo + 4;
-                int curve_mid_lo = std::max(2, points_to_defect / 5);
-                int curve_mid_hi = curve_mid_lo + 5;
-                int curve_far_lo = std::max(2, points_to_defect * 9 / 10);
-                int curve_far_hi = curve_far_lo + 5;
-
-                double curve_near = util::contourCurvature(contour, fingerTipCands[i],
-                    curve_near_lo, curve_near_hi);
-                double curve_mid = util::contourCurvature(contour, indexHull[i],
-                    curve_mid_lo, curve_mid_hi);
-                double curve_far = util::contourCurvature(contour, fingerTipCands[i],
-                    curve_far_lo, curve_far_hi);
-
-                curve_far = std::min(curve_mid, curve_far);
-
+                float finger_length_ij = util::euclideanDistance(finger_ij, defect_ij);
+                float curve_near = util::contourCurvature(contour, fingerTipCands[i], finger_length_ij * 0.15f);
+                float curve_far = util::contourCurvature(contour, fingerTipCands[i], finger_length_ij * 0.45f);
 #ifdef DEBUG
-                cv::Scalar txtColor = cv::Scalar(255, 255, 255);
-                if (!(curve_near >= params->fingerCurveNearMin &&
-                    curve_near <= params->fingerCurveNearMax &&
-                    curve_far >= params->fingerCurveFarMin &&
-                    curve_far <= params->fingerCurveFarMax)) {
-                    txtColor = cv::Scalar(0, 0, 255);
+                cv::Scalar txtColorNear, txtColorFar;
+                txtColorFar = txtColorNear = cv::Scalar::all(255);
+                if (curve_near < params->fingerCurveNearMin) {
+                    txtColorNear = cv::Scalar(0, 0, 255);
+                }
+                if (curve_far < params->fingerCurveFarMin) {
+                    txtColorFar = cv::Scalar(0, 0, 255);
                 }
 
                 cv::putText(visual,
-                    std::to_string(curve_far), finger_ij + topLeftPt + Point2i(0, 10),
-                    0, 0.5, txtColor, 1);
-
+                    std::to_string(curve_near), finger_ij + topLeftPt + Point2i(0, 10),
+                    0, 0.5, txtColorNear, 1);
                 cv::putText(visual,
-                    std::to_string(curve_near), finger_ij + topLeftPt + Point2i(0, -10),
-                    0, 0.5, txtColor, 1);
+                    std::to_string(curve_far) + "F", finger_ij + topLeftPt + Point2i(0, -10),
+                    0, 0.5, txtColorFar, 1);
 #endif
 
                 if (finger_length < params->fingerLenMax && finger_length > params->fingerLenMin &&
                     finger_defect_slope > params->fingerDefectSlopeMin &&
                     finger_center_slope > params->fingerCenterSlopeMin &&
                     centroid_defect_finger_angle > params->centroidDefectFingerAngleMin &&
-                    finger_xyz[2] != 0 &&
-                    curve_near >= params->fingerCurveNearMin &&
-                    curve_near <= params->fingerCurveNearMax &&
-                    curve_far >= params->fingerCurveFarMin &&
-                    curve_far <= params->fingerCurveFarMax)
+                    finger_xyz[2] != 0 && curve_near >= params->fingerCurveNearMin &&
+                    curve_far >= params->fingerCurveFarMin)
                 {
 
                     fingerTipsXyz.push_back(finger_xyz);
@@ -652,44 +625,36 @@ namespace ark {
                 else {
 #ifndef PLANE_ENABLED
                     // filter by curvature
-                    int curve_near_lo = std::max(2, points_to_defect / 20);
-                    int curve_near_hi = curve_near_lo + 4;
-                    int curve_mid_lo = std::max(2, points_to_defect / 5);
-                    int curve_mid_hi = curve_mid_lo + 5;
-                    int curve_far_lo = std::max(2, points_to_defect * 9 / 10);
-                    int curve_far_hi = curve_far_lo + 5;
-
-                    double curve_near = util::contourCurvature(contour, indexFinger_idx,
-                        curve_near_lo, curve_near_hi);
-                    double curve_mid = util::contourCurvature(contour, indexFinger_idx,
-                        curve_mid_lo, curve_mid_hi);
-                    double curve_far = util::contourCurvature(contour, indexFinger_idx,
-                        curve_far_lo, curve_far_hi);
-
-                    curve_far = std::min(curve_mid, curve_far);
+                    float finger_length_ij =
+                        util::euclideanDistance(indexFinger_ij, bestDef + topLeftPt);
+                    double curve_near = util::contourCurvature(contour, indexFinger_idx, finger_length_ij * 0.15);
+                    double curve_far = util::contourCurvature(contour, indexFinger_idx, finger_length_ij * 0.45);
 
 #ifdef DEBUG
-                    cv::Scalar txtColor = cv::Scalar(0, 255, 255);
-                    if (!(curve_near >= params->fingerCurveNearMin &&
-                        curve_near <= params->fingerCurveNearMax &&
-                        curve_far >= params->fingerCurveFarMin &&
-                        curve_far <= params->fingerCurveFarMax)) {
-                        txtColor = cv::Scalar(0, 0, 190);
+                    cv::Scalar txtColorNear = cv::Scalar(0, 255, 255);
+                    cv::Scalar txtColorFar = cv::Scalar(0, 255, 255);
+                    if (curve_near < params->fingerCurveNearMin) {
+                        txtColorNear = cv::Scalar(0, 0, 190);
+                    }
+                    if (curve_far < params->fingerCurveFarMin) {
+                        txtColorFar = cv::Scalar(0, 0, 190);
                     }
 
+                    cv::rectangle(visual, cv::Rect(bestDef.x + topLeftPt.x -5,
+                                                   bestDef.y + topLeftPt.y - 5, 10, 10),
+                                                   cv::Scalar(255,0,0),2);
+
                     cv::putText(visual,
-                        std::to_string(curve_far), indexFinger_ij + Point2i(0, 10),
-                        0, 0.5, txtColor, 1);
+                        std::to_string(curve_far) + "F", indexFinger_ij + Point2i(0, 10),
+                        0, 0.5, txtColorFar, 1);
 
                     cv::putText(visual,
                         std::to_string(curve_near), indexFinger_ij + Point2i(0, -10),
-                        0, 0.5, txtColor, 1);
+                        0, 0.5, txtColorNear, 1);
 #endif
 
-                    if (!(curve_near >= params->fingerCurveNearMin &&
-                        curve_near <= params->fingerCurveNearMax &&
-                        curve_far >= params->fingerCurveFarMin &&
-                        curve_far <= params->fingerCurveFarMax)) {
+                    if (curve_near < params->fingerCurveNearMin ||
+                         curve_far < params->fingerCurveFarMin) {
                         this->fingersIJ.clear(); this->fingersXYZ.clear();
                         this->defectsIJ.clear(); this->defectsXYZ.clear();
                     }

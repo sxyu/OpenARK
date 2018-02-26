@@ -47,7 +47,7 @@ namespace ark {
         * @return the euclidean distance between the two points
         */
         template<class T>
-        T euclideanDistance(cv::Point_<T> pt1, cv::Point_<T> pt2);
+        float euclideanDistance(const cv::Point_<T> & pt1, const cv::Point_<T> & pt2);
 
         /**
         * Get euclidean distance between two 3D points.
@@ -479,14 +479,25 @@ namespace ark {
             double * radius = nullptr, int samples = 100);
 
         /**
-         * Find the curvature of a contour in radians near the specified point
+         * Find the approximate curvature of a contour (1/R) near the specified point
          * @param[in] contour the input contour
          * @param index the index of the target point within the contour
-         * @param start the distance from the target point to begin averaging curvature
-         * @param end the distance from the target point to stop averaging curvature
+         * @param float the 2D euclidean distance from the target point to points for sampling derivatives
+         * @param max_tries maximum number of attempts to find the side points. set to -1 to disable.  
          * @return curvature in radians at the point
          */
-        double contourCurvature(const std::vector<Point2i> & contour, int index,
+        float contourCurvature(const std::vector<Point2i> & contour, int index,
+            float radius = 30.0, int max_tries = 60);
+
+        /**
+         * Find the angle of curvature of a contour in radians near the specified point
+         * @param[in] contour the input contour
+         * @param index the index of the target point within the contour
+         * @param start the number of points from the target point to begin averaging curvature
+         * @param end the number of points from the target point to stop averaging curvature
+         * @return angle in radians at the point
+         */
+        float contourLocalAngle(const std::vector<Point2i> & contour, int index,
             int start = 2, int end = 5);
 
         /** find the 2D distance, in pixels, between a given point and the farthest point in a given direction

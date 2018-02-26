@@ -21,7 +21,7 @@
 #endif
 
 // Custom assertion statement that prints out a message
-#ifndef NDEBUG
+#if !defined(NDEBUG) || defined(DEBUG)
 #   define ASSERT(condition, message) \
     do { \
         if (!(condition)) { \
@@ -31,7 +31,8 @@
         } \
     } while (false)
 #else
-#   define ASSERT(condition, message) do { } while (false)
+// disable assert if not debugging
+#  define ASSERT(condition, message) do { } while (false)
 #endif
 
 // Necessary for typedefs

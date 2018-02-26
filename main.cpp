@@ -198,7 +198,7 @@ int main() {
             // show "N Planes" on top left
             cv::putText(handVisual, std::to_string(planes.size()) +
                 util::pluralize(" Plane", planes.size()),
-                Point2i(10, 55), 0, 0.5, WHITE);
+                Point2i(10, 50), 0, 0.5, WHITE);
         }
 
         // update FPS
@@ -213,8 +213,11 @@ int main() {
             std::stringstream fpsDisplay;
             static char chr[32];
             sprintf(chr, "FPS: %02.3lf", currFPS);
-            Point2i pos(handVisual.cols - 120, 25);
-            cv::putText(handVisual, chr, pos, 0, 0.5, WHITE);
+            cv::putText(handVisual, chr, Point2i(handVisual.cols - 120, 25), 0, 0.5, WHITE);
+#ifdef DEBUG
+            cv::putText(handVisual, "Frame: " + std::to_string(currFrame),
+                Point2i(handVisual.cols - 120, 50), 0, 0.5, WHITE);
+#endif
         }
 
         int wait = 1;

@@ -68,14 +68,14 @@ namespace ark {
         }
 
         template<class T>
-        T euclideanDistance(cv::Point_<T> pt1, cv::Point_<T> pt2)
+        float euclideanDistance(const cv::Point_<T> & pt1, const cv::Point_<T> & pt2)
         {
             return sqrt((pt1.x - pt2.x) * (pt1.x - pt2.x) + (pt1.y - pt2.y) * (pt1.y - pt2.y));
         }
 
-        template int euclideanDistance<int>(cv::Point_<int> pt1, cv::Point_<int> pt2);
-        template float euclideanDistance<float>(cv::Point_<float> pt1, cv::Point_<float> pt2);
-        template double euclideanDistance<double>(cv::Point_<double> pt1, cv::Point_<double> pt2);
+        template float euclideanDistance<int>(const cv::Point_<int> & pt1, const cv::Point_<int> & pt2);
+        template float euclideanDistance<float>(const cv::Point_<float> & pt1, const cv::Point_<float> & pt2);
+        template float euclideanDistance<double>(const cv::Point_<double> & pt1, const cv::Point_<double> & pt2);
 
         template<class T>
         T euclideanDistance(const cv::Vec<T, 3> & pt1, const cv::Vec<T, 3> & pt2)
@@ -1140,10 +1140,58 @@ namespace ark {
             return bestpt;
         }
 
-        double contourCurvature(const std::vector<Point2i> & contour, int index,
+        float contourCurvature(const std::vector<Point2i>& contour, int index,
+            float radius, int max_tries)
+        {
+            const int N = (int) contour.size();
+
+            Point2i center = contour[index];
+            int idx[2]; Point2f points[2];
+
+            // find the point on the contour at 'radius' distance from the center point
+            for (int i = 0; i < 2; ++i) {
+                int delta = (i << 1) - 1; // {0: -1; 1: +1}
+                idx[i] = index;
+
+                int tries = 0;
+
+                float dist = 0.0f;
+                do {
+                    idx[i] = (idx[i] + delta + N) % N;
+                    dist = euclideanDistance(contour[idx[i]], center);
+                    ++tries;
+                } while (dist <= radius && idx[i] != index &&
+                    (tries <= max_tries || max_tries < 0));
+
+                points[i] = contour[idx[i]]; 
+
+                const Point2i & prevPt = contour[(idx[i] - delta + N) % N];
+                float pdist = euclideanDistance(prevPt, center);
+
+                // scale linearly on the edge of the contour between
+                // the previous and current points to approximate desired distance
+                if (dist > radius && radius >= pdist) {
+                    float fact = (radius - pdist) / (dist - pdist);
+                    points[i] = (1.0 - fact) * Point2f(prevPt) + fact * points[i];
+                }
+            }
+
+            float r2 = (idx[1] - idx[0]) / 2.0f; r2 *= r2;
+            float dx = (points[1].x - points[0].x) / (idx[1] - idx[0]);
+            float dy = (points[1].y - points[0].y) / (idx[1] - idx[0]);
+            float d2x = (points[1].x + points[0].x - 2 * center.x) / r2;
+            float d2y = (points[1].y + points[0].y - 2 * center.y) / r2;
+            float norm = dx * dx + dy * dy;
+            if (norm == 0.0f) return 0.0f;
+            return abs(dx * d2y - dy * d2x) / pow(norm, 1.5f);
+        }
+
+        float contourLocalAngle(const std::vector<Point2i> & contour, int index,
             int start, int end) {
+
             int l = index, r = index;
             int sz = (int)contour.size();
+            
             Point2i center = contour[index];
 
             for (int i = 0; i < start; ++i) {

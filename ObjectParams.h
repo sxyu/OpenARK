@@ -175,28 +175,16 @@ namespace ark {
         double fingerCenterSlopeMin = -0.45;
 
         /**
-         * minimum curvature of the cluster's contour next to a finger tip
-         * default: 0.95
-         */
-        double fingerCurveNearMin = 0.95;
-
-        /**
-         * maximum curvature of the cluster's contour next to a finger tip
-         * default: 2.80
-         */
-        double fingerCurveNearMax = 2.80;
-
-        /**
-         * minimum curvature of the cluster's contour at a significant distance from the finger tip
+         * minimum curvature of the cluster's contour, estimated using point next to a finger tip
          * default: 0.05
          */
-        double fingerCurveFarMin = 0.05;
+        double fingerCurveNearMin = 0.05;
 
         /**
-         * maximum curvature of the cluster's contour at a significant distance from the finger tip
-         * default: 1.65
+         * minimum curvature of the cluster's contour, estimated using points about half the distance to the defect
+         * default: 0.16
          */
-        double fingerCurveFarMax = 1.65;
+        double fingerCurveFarMin = 0.16;
 
         /*
          * minimum finger length used when only one finger is detected
@@ -299,15 +287,15 @@ namespace ark {
 
         /**
          * minimum surface area (m^2) of a combined plane
-         * default: 0.0150
+         * default: 0.0120
          */
-        double planeMinArea = 0.0150;
+        double planeMinArea = 0.0120;
 
         /**
          * minimum (# equation inliers / # total points on screen * normal resolution^2)
          * on a combined plane
          * planes not meeting this criterion are discarded.
-         * default: 0.0550
+         * default: 0.0350
          */
         float planeEquationMinInliers = 0.0350f;
 
