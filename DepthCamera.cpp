@@ -103,7 +103,7 @@ namespace ark {
 
         // 2. eliminate large planes
 
-        if (elim_planes){
+        if (elim_planes) {
             std::vector<FramePlane::Ptr> planes = getFramePlanes(params);
             if (planes.size()) {
                 for (FramePlane::Ptr plane : planes) {
@@ -123,8 +123,13 @@ namespace ark {
         allIJPoints.reserve(R * C);
         allXYZPoints.reserve(R * C);
 
+#ifdef DEBUG
+        cv::Mat floodFillVis = cv::Mat::zeros(R, C, CV_8UC3);
+        int compID = 0;
+#endif
+
         // compute the minimum number of points in a cluster according to params
-        const int CLUSTER_MIN_POINTS = (int) (params->handClusterMinPoints * R * C);
+        const int CLUSTER_MIN_POINTS = (int)(params->handClusterMinPoints * R * C);
 
         for (int r = 0; r < R; r += params->handClusterInterval)
         {
@@ -142,14 +147,28 @@ namespace ark {
 
                     if (points_in_comp >= CLUSTER_MIN_POINTS)
                     {
-                        VecP2iPtr ijPoints = std::make_shared<std::vector<Point2i> > (allIJPoints);
-                        VecV3fPtr xyzPoints = std::make_shared<std::vector<Vec3f> > (allXYZPoints);
+                        VecP2iPtr ijPoints = std::make_shared<std::vector<Point2i> >(allIJPoints);
+                        VecV3fPtr xyzPoints = std::make_shared<std::vector<Vec3f> >(allXYZPoints);
 
                         // 4. for each cluster, test if hand
 
                         // if matching required conditions, construct 3D object
                         Hand::Ptr handPtr = std::make_shared<Hand>(ijPoints, xyzPoints, xyzMap,
-                                params, false, points_in_comp);
+                            params, false, points_in_comp);
+
+                        if (ijPoints->size() < CLUSTER_MIN_POINTS) continue;
+
+#ifdef DEBUG
+                        cv::Vec3b color = util::paletteColor(compID++);
+                        for (uint i = 0; i < points_in_comp; ++i) {
+                            floodFillVis.at<Vec3b>(allIJPoints[i]) = color;
+                        }
+
+                        if (handPtr->getWristIJ().size() >= 2) {
+                            cv::circle(floodFillVis, handPtr->getWristIJ()[0], 5, cv::Scalar(100, 255, 255));
+                            cv::circle(floodFillVis, handPtr->getWristIJ()[1], 5, cv::Scalar(100, 255, 255));
+                        }
+#endif
 
                         if (handPtr->isValidHand()) {
                             float distance = handPtr->getDepth();
@@ -159,10 +178,13 @@ namespace ark {
                                 closestHandDist = distance;
                             }
 
+#ifdef DEBUG
+                            cv::polylines(floodFillVis, handPtr->getContour(), true, cv::Scalar(255, 255, 255));
+#endif
                             if (handPtr->getSVMConfidence() >
                                 params->handSVMHighConfidenceThresh ||
                                 !params->handUseSVM) {
-                                 // avoid duplicate hand
+                                // avoid duplicate hand
                                 if (bestHandObject == handPtr) bestHandObject = nullptr;
                                 hands.push_back(handPtr);
                             }
@@ -176,6 +198,20 @@ namespace ark {
             // if no hands surpass 'high confidence threshold', at least add one hand
             hands.push_back(bestHandObject);
         }
+
+        if (params->handUseSVM) {
+            std::sort(hands.begin(), hands.end(), [](Hand::Ptr a, Hand::Ptr b) {
+                return a->getSVMConfidence() > b->getSVMConfidence();
+            });
+        }
+        else {
+            std::sort(hands.begin(), hands.end(), [](Hand::Ptr a, Hand::Ptr b) {
+                return a->getDepth() < b->getDepth();
+            });
+        }
+#ifdef DEBUG
+        cv::imshow("[Flood Fill Debug]", floodFillVis);
+#endif
 
         isCached |= FLAG_FRM_HANDS;
         return hands;

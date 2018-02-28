@@ -119,8 +119,7 @@ namespace ark {
 
     float FrameObject::getDepth()
     {
-        if (avgDepth == -1)
-            avgDepth = util::averageDepth(xyzMap);
+        if (avgDepth == -1) avgDepth = util::averageDepth(xyzMap);
         return avgDepth;
     }
 
@@ -241,7 +240,7 @@ namespace ark {
             }
         }
 
-        morph(1, 4, false);
+        morph(params->contourImageErodeAmount, params->contourImageDilateAmount, false);
 
         for (int i = 1; i < getContourScalingFactor(); i <<= 1) {
             cv::pyrUp(grayMap, grayMap);

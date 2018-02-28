@@ -105,6 +105,16 @@ namespace ark {
         double handSVMHighConfidenceThresh = 0.56f;
 
         /**
+         * Amount toerodedilate the contour image by to remove small points
+         */
+        int contourImageErodeAmount = 1;
+
+        /**
+         * Amount to dilate the contour image by to remove small gaps
+         */
+        int contourImageDilateAmount = 4;
+
+        /**
          * maximum distance between the center of the hand and the top point in the hand cluster (m)
          * used when detecting the hand's center
          */
@@ -243,9 +253,9 @@ namespace ark {
 
         /**
          * minimum angle between centroid, defect, and finger
-         * default: 0.40 * PI
+         * default: 0.20 * PI
          */
-        double centroidDefectFingerAngleMin = 0.40 * PI;
+        double centroidDefectFingerAngleMin = 0.20 * PI;
 
         /**
          * minimum norm (distance squared; in m^2) between a hand and a plane.

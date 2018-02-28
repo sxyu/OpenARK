@@ -408,7 +408,7 @@ namespace ark {
 
         double averageDepth(cv::Mat xyzMap) {
             cv::Mat depth; cv::extractChannel(xyzMap, depth, 2);
-            return cv::mean(xyzMap, depth > 0.0f)[0];
+            return cv::mean(depth, depth > 0.0f)[0];
         }
 
         Point2i findCentroid(cv::Mat xyzMap)

@@ -282,6 +282,9 @@ namespace ark {
         // if too small/large, stop
         surfaceArea = util::surfaceArea(fullMapSize, *points, *points_xyz, num_points);
         if (surfaceArea < params->handMinArea || surfaceArea > params->handMaxArea) {
+#ifdef DEBUG
+            std::cerr << "[Hand Debug]: OBJECT ELIMINATED BY SURFACE AREA (" << surfaceArea << "m^2)\n";
+#endif
             return false;
         }
 
@@ -573,6 +576,9 @@ namespace ark {
                 util::pointOnEdge(fullMapSize, indexFinger_ij, params->bottomEdgeThresh,
                     params->sideEdgeThresh) || goodDefects.size() == 0) {
                 // angle too small or point on edge
+#ifdef DEBUG
+                std::cerr << "[Hand Debug]: Single finger angle too small or point on edge\n";
+#endif
             }
             else {
                 this->fingersXYZ.push_back(indexFinger_xyz);
@@ -613,63 +619,48 @@ namespace ark {
                     defects_idx_filtered.push_back(bestIdx);
                 }
 
+                // filter by curvature
+                float finger_length_ij =
+                    util::euclideanDistance(indexFinger_ij, bestDef + topLeftPt);
+                double curve_near = util::contourCurvature(contour, indexFinger_idx, finger_length_ij * 0.15);
+                double curve_far = util::contourCurvature(contour, indexFinger_idx, finger_length_ij * 0.45);
 
-                int points_to_defect = std::min(abs(bestIdx - indexFinger_idx),
-                    std::min(bestIdx, indexFinger_idx) + (int)contour.size() -
-                    std::max(bestIdx, indexFinger_idx));
+#ifdef DEBUG
+                cv::Scalar txtColorNear = cv::Scalar(0, 255, 255);
+                cv::Scalar txtColorFar = cv::Scalar(0, 255, 255);
+                if (curve_near < params->fingerCurveNearMin) {
+                    txtColorNear = cv::Scalar(0, 0, 190);
+                }
+                if (curve_far < params->fingerCurveFarMin) {
+                    txtColorFar = cv::Scalar(0, 0, 190);
+                }
 
-                if (points_to_defect < 10) {
+                cv::rectangle(visual, cv::Rect(bestDef.x + topLeftPt.x - 5,
+                    bestDef.y + topLeftPt.y - 5, 10, 10),
+                    cv::Scalar(255, 0, 0), 2);
+
+                cv::putText(visual,
+                    std::to_string(curve_far) + "F", indexFinger_ij + Point2i(0, 10),
+                    0, 0.5, txtColorFar, 1);
+
+                cv::putText(visual,
+                    std::to_string(curve_near), indexFinger_ij + Point2i(0, -10),
+                    0, 0.5, txtColorNear, 1);
+#endif
+
+                if (curve_near < params->fingerCurveNearMin ||
+                    curve_far < params->fingerCurveFarMin) {
                     this->fingersIJ.clear(); this->fingersXYZ.clear();
                     this->defectsIJ.clear(); this->defectsXYZ.clear();
                 }
                 else {
-#ifndef PLANE_ENABLED
-                    // filter by curvature
-                    float finger_length_ij =
-                        util::euclideanDistance(indexFinger_ij, bestDef + topLeftPt);
-                    double curve_near = util::contourCurvature(contour, indexFinger_idx, finger_length_ij * 0.15);
-                    double curve_far = util::contourCurvature(contour, indexFinger_idx, finger_length_ij * 0.45);
-
-#ifdef DEBUG
-                    cv::Scalar txtColorNear = cv::Scalar(0, 255, 255);
-                    cv::Scalar txtColorFar = cv::Scalar(0, 255, 255);
-                    if (curve_near < params->fingerCurveNearMin) {
-                        txtColorNear = cv::Scalar(0, 0, 190);
-                    }
-                    if (curve_far < params->fingerCurveFarMin) {
-                        txtColorFar = cv::Scalar(0, 0, 190);
-                    }
-
-                    cv::rectangle(visual, cv::Rect(bestDef.x + topLeftPt.x -5,
-                                                   bestDef.y + topLeftPt.y - 5, 10, 10),
-                                                   cv::Scalar(255,0,0),2);
-
-                    cv::putText(visual,
-                        std::to_string(curve_far) + "F", indexFinger_ij + Point2i(0, 10),
-                        0, 0.5, txtColorFar, 1);
-
-                    cv::putText(visual,
-                        std::to_string(curve_near), indexFinger_ij + Point2i(0, -10),
-                        0, 0.5, txtColorNear, 1);
-#endif
-
-                    if (curve_near < params->fingerCurveNearMin ||
-                         curve_far < params->fingerCurveFarMin) {
-                        this->fingersIJ.clear(); this->fingersXYZ.clear();
+                    double fingerLen = util::euclideanDistance(indexFinger_xyz, this->defectsXYZ[0]);
+                    // too long or too short
+                    if (fingerLen > params->singleFingerLenMax || fingerLen < params->singleFingerLenMin) {
+                        this->fingersXYZ.clear(); this->fingersIJ.clear();
                         this->defectsIJ.clear(); this->defectsXYZ.clear();
+                        fingerTipsIdxFiltered.clear(); defects_idx_filtered.clear();
                     }
-                    else {
-#endif
-                        double fingerLen = util::euclideanDistance(indexFinger_xyz, this->defectsXYZ[0]);
-                        // too long or too short
-                        if (fingerLen > params->singleFingerLenMax || fingerLen < params->singleFingerLenMin) {
-                            this->fingersXYZ.clear(); this->fingersIJ.clear();
-                            this->defectsIJ.clear(); this->defectsXYZ.clear();
-                            fingerTipsIdxFiltered.clear(); defects_idx_filtered.clear();
-                        }
-#ifndef PLANE_ENABLED
-                    }
-#endif
                 }
             }
         }
@@ -682,9 +673,12 @@ namespace ark {
 
         // report not hand if there are too few/many fingers
         if (nFin > 6 || nFin < 1) {
+#ifdef DEBUG
+            //std::cerr << "[Hand Debug]: OBJECT ELIMINATED BECAUSE NOT ENOUGH FINGERS (" << nFin << ")\n";
+#endif
             return false;
         }
-        
+
         // find dominant direction
         if (nFin > 0) {
             Point2f fingCen = this->fingersIJ[nFin / 2];
@@ -698,7 +692,7 @@ namespace ark {
 
         // Final SVM check
         if (params->handUseSVM && handValidator.isTrained()) {
-            this->svmConfidence = handValidator.classify(*this, xyzMap, 
+            this->svmConfidence = handValidator.classify(*this, xyzMap,
                 topLeftPt, fullMapSize.width);
             if (this->svmConfidence < params->handSVMConfidenceThresh) {
                 // SVM confidence value below threshold, reverse decision & destroy the hand instance
@@ -803,7 +797,7 @@ namespace ark {
             for (int j = 0; j < planes.size(); ++j) {
                 const FramePlane & plane = *planes[j];
 
-                bool touching = plane.touching(fingersXYZ[i], fingersIJ[i], 
+                bool touching = plane.touching(fingersXYZ[i], fingersIJ[i],
                     threshold, !extrapolate);
 
                 if (touching) {
@@ -825,47 +819,47 @@ namespace ark {
         return 2;
     }
 
-    const Vec3f & Hand::getPalmCenter() const 
+    const Vec3f & Hand::getPalmCenter() const
     {
         return palmCenterXYZ;
     }
 
-    const Point2i & Hand::getPalmCenterIJ() const 
+    const Point2i & Hand::getPalmCenterIJ() const
     {
         return palmCenterIJ;
     }
 
-    const std::vector<Vec3f> & Hand::getFingers() const 
+    const std::vector<Vec3f> & Hand::getFingers() const
     {
         return fingersXYZ;
     }
 
-    const std::vector<Point2i> & Hand::getFingersIJ() const 
+    const std::vector<Point2i> & Hand::getFingersIJ() const
     {
         return fingersIJ;
     }
 
-    const std::vector<Vec3f> & Hand::getDefects() const 
+    const std::vector<Vec3f> & Hand::getDefects() const
     {
         return defectsXYZ;
     }
 
-    const std::vector<Point2i> & Hand::getDefectsIJ() const 
+    const std::vector<Point2i> & Hand::getDefectsIJ() const
     {
         return defectsIJ;
     }
 
-    const std::vector<Vec3f> & Hand::getWrist() const 
+    const std::vector<Vec3f> & Hand::getWrist() const
     {
         return wristXYZ;
     }
 
-    const std::vector<Point2i> & Hand::getWristIJ() const 
+    const std::vector<Point2i> & Hand::getWristIJ() const
     {
         return wristIJ;
     }
 
-    double Hand::getCircleRadius() const 
+    double Hand::getCircleRadius() const
     {
         return circleRadius;
     }
@@ -880,7 +874,7 @@ namespace ark {
         return svmConfidence;
     }
 
-    bool Hand::isValidHand() const 
+    bool Hand::isValidHand() const
     {
         return isHand;
     }
