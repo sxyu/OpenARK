@@ -27,8 +27,7 @@ namespace ark {
         * @param cluster_depth_map point cloud containing the object
         * @param params parameters for object/hand detection (if not specified, uses default params)
         */
-        explicit Hand(const cv::Mat & cluster_depth_map,
-            const ObjectParams * params = nullptr);
+        explicit Hand(const cv::Mat & cluster_depth_map, DetectionParams::Ptr params = nullptr);
 
         /**
         * Construct a Hand instance from a vector of points.
@@ -41,7 +40,7 @@ namespace ark {
         Hand(std::shared_ptr<std::vector<Point2i>> points_ij,
             std::shared_ptr<std::vector<Vec3f>> points_xyz,
             const cv::Mat & depth_map,
-            const ObjectParams * params = nullptr,
+            DetectionParams::Ptr params = nullptr,
             bool sorted = false,
             int points_to_use = -1
         );

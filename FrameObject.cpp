@@ -7,15 +7,13 @@
 #include "Util.h"
 
 namespace ark {
-    // Initialize default ObjectParams instance
-    const ObjectParams ObjectParams::DEFAULT = ObjectParams();
+    // Initialize default DetectionParams instance
+    DetectionParams::Ptr DetectionParams::DEFAULT = DetectionParams::create();
 
     // Constructors
     FrameObject::FrameObject() { }
 
-    FrameObject::FrameObject(const cv::Mat & depthMap, const ObjectParams * params) {
-        if (params == nullptr) params = &ObjectParams::DEFAULT;
-
+    FrameObject::FrameObject(const cv::Mat & depthMap, DetectionParams::Ptr params) {
         auto points = std::make_shared<std::vector<Point2i>>();
         auto points_xyz = std::make_shared<std::vector<Vec3f>>();
 
@@ -34,9 +32,8 @@ namespace ark {
 
     FrameObject::FrameObject(std::shared_ptr<std::vector<Point2i>> points_ij, 
         std::shared_ptr<std::vector<Vec3f>> points_xyz, const cv::Mat & depth_map,
-        const ObjectParams * params,
+        DetectionParams::Ptr params,
         bool sorted, int points_to_use) {
-
         initializeFrameObject(points_ij, points_xyz, depth_map, params, sorted, points_to_use);
     }
 
@@ -247,10 +244,12 @@ namespace ark {
         }
     }
 
-    void FrameObject::initializeFrameObject(std::shared_ptr<std::vector<Point2i>> points_ij, std::shared_ptr<std::vector<Vec3f>> points_xyz, const cv::Mat & depth_map, const ObjectParams * params, bool sorted, int points_to_use)
+    void FrameObject::initializeFrameObject(VecP2iPtr points_ij, 
+        VecV3fPtr points_xyz, const cv::Mat & depth_map, DetectionParams::Ptr params,
+        bool sorted, int points_to_use)
     {
         if (params == nullptr) {
-            params = &ObjectParams::DEFAULT;
+            params = DetectionParams::DEFAULT;
         }
 
         if (points_to_use < 0 || points_to_use >(int)points_ij->size())

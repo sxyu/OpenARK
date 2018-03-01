@@ -24,7 +24,7 @@ namespace ark {
          * @param v vector of plane parameters
          * @see FrameObject
          */
-        FramePlane(const Vec3f & v, const cv::Mat & cluster_depth_map, const ObjectParams * params = nullptr);
+        FramePlane(const Vec3f & v, const cv::Mat & cluster_depth_map, DetectionParams::Ptr params = nullptr);
 
         /** 
          * Construct a plane with the given parameter vector and the given 3D object information
@@ -38,7 +38,7 @@ namespace ark {
          * @param points_to_use optionally, the number of points in 'points' to use for the object. By default, uses all points.
          */
         FramePlane(Vec3f v, VecP2iPtr points_ij, VecV3fPtr points_xyz,
-            const cv::Mat & depth_map, const ObjectParams * params = nullptr,
+            const cv::Mat & depth_map, DetectionParams::Ptr params = nullptr,
             bool sorted = false, int points_to_use = -1);
 
         /**

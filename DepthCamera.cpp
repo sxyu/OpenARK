@@ -56,238 +56,12 @@ namespace ark {
         // when update is done, swap buffers to front
         swapBuffers();
 
-        // clear cache flag
-        isCached = 0;
+        // call callbacks
+        for (auto callback : updateCallbacks) {
+            callback.second(*this);
+        }
+
         return !badInput();
-    }
-
-    void DepthCamera::computeNormalMap(const ObjectParams * params, const cv::Mat * xyz_map) {
-        if (params == nullptr) params = &ObjectParams::DEFAULT;
-
-        if (xyz_map) {
-            util::computeNormalMap(*xyz_map, normalMap, 4, params->normalResolution, false);
-        }
-        else {
-            util::computeNormalMap(this->xyzMap, normalMap, 4, params->normalResolution, false);
-        }
-
-        isCached |= FLAG_NORMALS;
-    }
-
-    std::vector<Hand::Ptr> & DepthCamera::getFrameHands(const ObjectParams * params, bool elim_planes)
-    {
-        if (!this->xyzMap.data || (isCached & FLAG_FRM_HANDS)) return hands;
-
-        hands.clear();
-
-        // 1. initialize
-        if (params == nullptr) params = &ObjectParams::DEFAULT;
-
-        cv::Mat xyzMap = getXYZMap();
-        const int R = xyzMap.rows, C = xyzMap.cols;
-
-        cv::Mat floodFillMap(R, C, CV_8U);
-
-        const Vec3f * ptr;
-        uchar * visPtr;
-
-        for (int r = 0; r < R; ++r)
-        {
-            visPtr = floodFillMap.ptr<uchar>(r);
-            ptr = xyzMap.ptr<Vec3f>(r);
-            for (int c = 0; c < C; ++c)
-            {
-                visPtr[c] = ptr[c][2] > 0 ? 255 : 0;
-            }
-        }
-
-        // 2. eliminate large planes
-
-        if (elim_planes) {
-            std::vector<FramePlane::Ptr> planes = getFramePlanes(params);
-            if (planes.size()) {
-                for (FramePlane::Ptr plane : planes) {
-                    util::removePlane<uchar>(xyzMap, floodFillMap, plane->equation,
-                        params->handPlaneMinNorm);
-                }
-            }
-        }
-
-        // 3. flood fill on point cloud 
-        std::shared_ptr<Hand> bestHandObject;
-        float closestHandDist = FLT_MAX;
-
-        std::vector<Point2i> allIJPoints;
-        std::vector<Vec3f> allXYZPoints;
-
-        allIJPoints.reserve(R * C);
-        allXYZPoints.reserve(R * C);
-
-#ifdef DEBUG
-        cv::Mat floodFillVis = cv::Mat::zeros(R, C, CV_8UC3);
-        int compID = 0;
-#endif
-
-        // compute the minimum number of points in a cluster according to params
-        const int CLUSTER_MIN_POINTS = (int)(params->handClusterMinPoints * R * C);
-
-        for (int r = 0; r < R; r += params->handClusterInterval)
-        {
-            ptr = xyzMap.ptr<Vec3f>(r);
-            visPtr = floodFillMap.ptr<uchar>(r);
-
-            for (int c = 0; c < C; c += params->handClusterInterval)
-            {
-                if (visPtr[c] > 0 && ptr[c][2] > 0)
-                {
-                    int points_in_comp = util::floodFill(xyzMap, Point2i(c, r),
-                        params->handClusterMaxDistance,
-                        &allIJPoints, &allXYZPoints, nullptr, 1, 6,
-                        params->handClusterMaxDistance * 8, &floodFillMap);
-
-                    if (points_in_comp >= CLUSTER_MIN_POINTS)
-                    {
-                        VecP2iPtr ijPoints = std::make_shared<std::vector<Point2i> >(allIJPoints);
-                        VecV3fPtr xyzPoints = std::make_shared<std::vector<Vec3f> >(allXYZPoints);
-
-                        // 4. for each cluster, test if hand
-
-                        // if matching required conditions, construct 3D object
-                        Hand::Ptr handPtr = std::make_shared<Hand>(ijPoints, xyzPoints, xyzMap,
-                            params, false, points_in_comp);
-
-                        if (ijPoints->size() < CLUSTER_MIN_POINTS) continue;
-
-#ifdef DEBUG
-                        cv::Vec3b color = util::paletteColor(compID++);
-                        for (uint i = 0; i < points_in_comp; ++i) {
-                            floodFillVis.at<Vec3b>(allIJPoints[i]) = color;
-                        }
-
-                        if (handPtr->getWristIJ().size() >= 2) {
-                            cv::circle(floodFillVis, handPtr->getWristIJ()[0], 5, cv::Scalar(100, 255, 255));
-                            cv::circle(floodFillVis, handPtr->getWristIJ()[1], 5, cv::Scalar(100, 255, 255));
-                        }
-#endif
-
-                        if (handPtr->isValidHand()) {
-                            float distance = handPtr->getDepth();
-
-                            if (distance < closestHandDist) {
-                                bestHandObject = handPtr;
-                                closestHandDist = distance;
-                            }
-
-#ifdef DEBUG
-                            cv::polylines(floodFillVis, handPtr->getContour(), true, cv::Scalar(255, 255, 255));
-#endif
-                            if (handPtr->getSVMConfidence() >
-                                params->handSVMHighConfidenceThresh ||
-                                !params->handUseSVM) {
-                                // avoid duplicate hand
-                                if (bestHandObject == handPtr) bestHandObject = nullptr;
-                                hands.push_back(handPtr);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        if (bestHandObject != nullptr) {
-            // if no hands surpass 'high confidence threshold', at least add one hand
-            hands.push_back(bestHandObject);
-        }
-
-        if (params->handUseSVM) {
-            std::sort(hands.begin(), hands.end(), [](Hand::Ptr a, Hand::Ptr b) {
-                return a->getSVMConfidence() > b->getSVMConfidence();
-            });
-        }
-        else {
-            std::sort(hands.begin(), hands.end(), [](Hand::Ptr a, Hand::Ptr b) {
-                return a->getDepth() < b->getDepth();
-            });
-        }
-#ifdef DEBUG
-        cv::imshow("[Flood Fill Debug]", floodFillVis);
-#endif
-
-        isCached |= FLAG_FRM_HANDS;
-        return hands;
-    }
-
-    std::vector<FramePlane::Ptr> & DepthCamera::getFramePlanes(const ObjectParams * params)
-    {
-        if (!this->xyzMap.data || (isCached & FLAG_FRM_PLANES)) return framePlanes;
-
-        framePlanes.clear();
-        cv::Mat xyzMap = getXYZMap();
-
-        std::vector<Vec3f> equations;
-        std::vector<VecP2iPtr> points;
-        std::vector<VecV3fPtr> pointsXYZ;
-
-        detectPlaneHelper(xyzMap, equations, points, pointsXYZ, params);
-
-        for (uint i = 0; i < equations.size(); ++i) {
-            auto planePtr = std::make_shared<FramePlane>
-                (equations[i], points[i], pointsXYZ[i], xyzMap, params);
-
-            if (planePtr->getSurfArea() > params->planeMinArea) {
-                framePlanes.emplace_back(planePtr);
-            }
-        }
-
-        if (params == nullptr) params = &ObjectParams::DEFAULT;
-
-#ifdef DEBUG
-        cv::Mat planeDebugVisual =
-            cv::Mat::zeros(xyzMap.size() / params->normalResolution, CV_8UC3);
-
-        for (int i = 0; i < framePlanes.size(); ++i) {
-            Vec3b color = util::paletteColor(i);
-            const std::vector<Point2i> & points = framePlanes[i]->getPointsIJ();
-
-            for (uint j = 0; j < points.size(); ++j) {
-                planeDebugVisual.at<Vec3b>(points[j] / params->normalResolution) = color;
-            }
-        }
-
-        cv::resize(planeDebugVisual, planeDebugVisual, planeDebugVisual.size() * params->normalResolution,
-            0, 0, cv::INTER_NEAREST);
-
-
-        for (int i = 0; i < framePlanes.size(); ++i) {
-            cv::putText(planeDebugVisual, std::to_string(framePlanes[i]->getSurfArea()), framePlanes[i]->getCenterIJ(), 0, 0.5, cv::Scalar(255, 255, 255));
-        }
-
-        cv::imshow("[Plane Debug]", planeDebugVisual);
-#endif
-
-        // cache planes for current frame
-        isCached |= FLAG_FRM_PLANES;
-        return framePlanes;
-    }
-
-    std::vector<FrameObject::Ptr> & DepthCamera::getFrameObjects(const ObjectParams * params)
-    {        
-        if (!this->xyzMap.data || (isCached & FLAG_FRM_OBJS)) return frameObjects;
-        frameObjects.clear();
-
-        // default parameters
-        if (params == nullptr) params = &ObjectParams::DEFAULT;
-
-        // get planes and hands
-        getFramePlanes(params); getFrameHands(params);
-
-        // push resulting objects
-        for (auto plane : framePlanes) frameObjects.push_back(plane);
-        for (auto hand : hands) frameObjects.push_back(hand);
-
-        // cache for current frame
-        isCached |= FLAG_FRM_OBJS;
-        return frameObjects;
     }
 
     bool DepthCamera::badInput()
@@ -324,6 +98,25 @@ namespace ark {
     bool DepthCamera::isCapturing()
     {
         return !captureInterrupt;
+    }
+
+    int DepthCamera::addUpdateCallback(std::function<void(DepthCamera&)> func)
+    {
+        int id;
+        if (updateCallbacks.empty()) {
+            id = 0;
+        }
+        else {
+            id = updateCallbacks.rbegin()->first + 1;
+        }
+
+        updateCallbacks[id] = func;
+        return id;
+    }
+
+    void DepthCamera::removeUpdateCallback(int id)
+    {
+        updateCallbacks.erase(id);
     }
 
     cv::Size DepthCamera::getImageSize() const
@@ -421,14 +214,12 @@ namespace ark {
         fs["irMap"] >> irMap;
         fs.release();
 
-        isCached = 0;
-
-        if (xyzMap.rows == 0 || ampMap.rows == 0 || flagMap.rows == 0)
-        {
-            return false;
+        // call callbacks
+        for (auto callback : updateCallbacks) {
+            callback.second(*this);
         }
 
-        return true;
+        return !(xyzMap.rows == 0 || ampMap.rows == 0 || flagMap.rows == 0);
     }
 
     const cv::Mat DepthCamera::getXYZMap() const
@@ -471,17 +262,6 @@ namespace ark {
         std::lock_guard<std::mutex> lock(imageMutex);
         if (irMap.data == nullptr) return cv::Mat::zeros(getImageSize(), CV_8U);
         return irMap;
-    }
-
-    const cv::Mat DepthCamera::getNormalMap()
-    {
-        std::lock_guard<std::mutex> lock(imageMutex);
-        if ((!(isCached & FLAG_NORMALS) || normalMap.data == nullptr) &&
-                            xyzMap.data != nullptr){
-            computeNormalMap();
-        }
-
-        return normalMap;
     }
 
     bool DepthCamera::hasAmpMap() const
@@ -542,158 +322,6 @@ namespace ark {
                 }
                 lastTime = currTime;
             }
-        }
-    }
-
-    void DepthCamera::detectPlaneHelper(const cv::Mat & xyz_map,
-        std::vector<Vec3f> & output_equations, 
-        std::vector<VecP2iPtr> & output_points, std::vector<VecV3fPtr> & output_points_xyz, 
-        const ObjectParams * params, const cv::Mat * normal_map)
-    { 
-        if (params == nullptr) params = &ObjectParams::DEFAULT;
-
-        // 1. initialize
-        cv::Mat normalMap;
-        if (normal_map == nullptr) {
-            normalMap = getNormalMap();
-        }
-        else {
-            normalMap = *normal_map;
-        }
-        const int R = xyz_map.rows, C = xyz_map.cols, N = R * C;
-
-        // initialize flood fill map
-        cv::Mat floodFillMap(R, C, CV_8U);
-        const Vec3f * ptr; uchar * visPtr;
-        for (int r = 0; r < R; ++r)
-        {
-            visPtr = floodFillMap.ptr<uchar>(r);
-            ptr = xyz_map.ptr<Vec3f>(r);
-            for (int c = 0; c < C; ++c)
-            {
-                visPtr[c] = ptr[c][2] > 0 ? 255 : 0;
-            }
-        }
-
-        int compId = -1;
-        std::vector<Point2i> allIndices;
-        allIndices.reserve(N);
-
-        // 2. find 'subplanes' i.e. all flat objects visible in frame and combine similar ones
-        // stores points on each plane
-        std::vector<std::shared_ptr<std::vector<Point2i> > > planePointsIJ;
-
-        // stores points (in 3D coords) on each plane
-        std::vector<std::shared_ptr<std::vector<Vec3f> > > planePointsXYZ;
-
-        // equations of the planes: ax + by - z + c = 0
-        std::vector<Vec3f> planeEquation;
-
-        // compute constants
-        const int SUBPLANE_MIN_POINTS = params->subplaneMinPoints * N /
-            (params->normalResolution * params->normalResolution);
-
-        const int PLANE_MIN_POINTS = params->planeMinPoints * N /
-            (params->normalResolution * params->normalResolution);
-
-        const int PLANE_MIN_INLIERS = params->planeEquationMinInliers * N /
-            (params->normalResolution * params->normalResolution);
-
-        for (int r = 0; r < R; r += params->normalResolution) {
-            visPtr = floodFillMap.ptr<uchar>(r);
-
-            for (int c = 0; c < C; c += params->normalResolution) {
-                if (visPtr[c] == 0) continue;
-
-                Point2i pt(c, r);
-                // flood fill normals
-                int numPts = util::floodFill(normalMap, pt, params->planeFloodFillThreshold,
-                                             &allIndices, nullptr, nullptr,
-                                             params->normalResolution, 0, 0.0f, &floodFillMap);
-
-                if (numPts >= SUBPLANE_MIN_POINTS) {
-                    // filter out outliers & find plane equation
-                    std::vector<Vec3f> allXyzPoints(numPts);
-
-                    for (int k = 0; k < numPts; ++k) {
-                        allXyzPoints[k] = xyz_map.at<Vec3f>(allIndices[k]);;
-                    }
-
-                    util::radixSortPoints(allIndices, C, R, numPts, &allXyzPoints);
-                    double surfArea = util::surfaceArea(normalMap.size(), allIndices,
-                        allXyzPoints, numPts);
-
-                    if (surfArea < params->subplaneMinArea) {
-                        continue;
-                    }
-
-                    Vec3f eqn = util::linearRegression(allXyzPoints, numPts);
-
-                    // combine similar subplanes
-                    uint i;
-                    for (i = 0; i < planeEquation.size(); ++i) {
-                        if (util::norm(planeEquation[i] - eqn) < params->planeCombineThreshold) {
-                            // found similar subplane, so combine them
-                            break;
-                        }
-                    }
-
-                    // pointers to point storage in planePointsIJ/XYZ
-                    std::shared_ptr<std::vector<Point2i>> pointStore;
-                    std::shared_ptr<std::vector<Vec3f>> pointStoreXyz;
-
-                    if (i >= planeEquation.size()) {
-                        // no similar plane found
-                        planeEquation.push_back(eqn);
-                        planePointsIJ.emplace_back(std::make_shared<std::vector<Point2i> >());
-                        planePointsXYZ.emplace_back(std::make_shared<std::vector<Vec3f> >());
-                        pointStore = *planePointsIJ.rbegin();
-                        pointStoreXyz = *planePointsXYZ.rbegin();
-                    }
-                    else {
-                        // similar plane found
-                        pointStore = planePointsIJ[i];
-                        pointStoreXyz = planePointsXYZ[i];
-                    }
-
-                    // save plane points to store
-                    int start = (int)pointStore->size();
-                    pointStore->resize(start + numPts);
-                    pointStoreXyz->resize(start + numPts);
-
-                    for (int i = 0; i < numPts; ++i) {
-                        pointStore->at(start + i) = allIndices[i];
-                        pointStoreXyz->at(start + i) = allXyzPoints[i];
-                    }
-                }
-            }
-        }
-
-        // 3. find equations of the combined planes and construct Plane objects with the data
-        for (uint i = 0; i < planeEquation.size(); ++i) {
-            int SZ = (int)planePointsIJ[i]->size();
-            if (SZ < PLANE_MIN_POINTS) continue;
-
-            std::vector<Vec3f> pointsXYZ;
-            util::removeOutliers(*planePointsXYZ[i], pointsXYZ, params->planeOutlierRemovalThreshold);
-
-            planeEquation[i] = util::linearRegression(pointsXYZ);
-
-            int goodPts = 0;
-
-            for (uint j = 0; j < SZ; ++j) {
-                float norm = util::pointPlaneNorm((*planePointsXYZ[i])[j], planeEquation[i]);
-                if (norm < params->handPlaneMinNorm) {
-                    ++goodPts;
-                }
-            }
-
-            if (goodPts < PLANE_MIN_INLIERS) continue;
-
-            // push to output
-            output_points.push_back(planePointsIJ[i]);
-            output_points_xyz.push_back(planePointsXYZ[i]);
-            output_equations.push_back(planeEquation[i]);
         }
     }
 }

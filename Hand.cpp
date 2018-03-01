@@ -59,14 +59,14 @@ namespace ark {
 
     Hand::Hand() : FrameObject() { }
 
-    Hand::Hand(const cv::Mat & cluster_depth_map, const ObjectParams * params)
+    Hand::Hand(const cv::Mat & cluster_depth_map, DetectionParams::Ptr params)
         : FrameObject(cluster_depth_map, params)
     {
         // Determine whether cluster is a hand
         isHand = checkForHand();
     }
 
-    Hand::Hand(std::shared_ptr<std::vector<Point2i>> points_ij, std::shared_ptr<std::vector<Vec3f>> points_xyz, const cv::Mat & depth_map, const ObjectParams * params, bool sorted, int points_to_use)
+    Hand::Hand(VecP2iPtr points_ij, VecV3fPtr points_xyz, const cv::Mat & depth_map, DetectionParams::Ptr params, bool sorted, int points_to_use)
         : FrameObject(points_ij, points_xyz, depth_map, params, sorted, points_to_use)
     {
         // Determine whether cluster is a hand
