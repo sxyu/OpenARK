@@ -307,17 +307,27 @@ namespace ark {
 
         Vec3f averageAroundPoint(const cv::Mat & xyz_map, const Point2i & pt, int radius)
         {
-            int t = std::max(0, pt.y - radius), b = std::min(xyz_map.rows - 1, pt.y + radius);
-            if (t >= b) return 0;
+            const int T = std::max(0, pt.y - radius), B = std::min(xyz_map.rows - 1, pt.y + radius);
+            if (T >= B) return 0;
 
-            int l = std::max(0, pt.x - radius), r = std::min(xyz_map.cols - 1, pt.x + radius);
-            if (l >= r) return 0;
+            const int L = std::max(0, pt.x - radius), R = std::min(xyz_map.cols - 1, pt.x + radius);
+            if (L >= R) return 0;
 
-            cv::Mat region = xyz_map(cv::Rect(l, t, r - l, b - t)), depth;
-            cv::extractChannel(region, depth, 2);
+            int total = 0;
+            Vec3f avg(0.0f, 0.0f, 0.0f);
 
-            cv::Scalar mean = cv::mean(region, depth > 0.0f);
-            return Vec3f(mean[0], mean[1], mean[2]);
+            const Vec3f * ptr;
+            for (int r = T; r < B; ++r) {
+                ptr = xyz_map.ptr<Vec3f>(r);
+                for (int c = L; c < R; ++c) {
+                    if (ptr[c][2] > 0) {
+                        ++total;
+                        avg += ptr[c];
+                    }
+                }
+            }
+
+            return avg / total;
         }
 
         int removeOutliers(const std::vector<Vec3f> & data, std::vector<Vec3f>& output,
