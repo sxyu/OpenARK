@@ -15,7 +15,7 @@ set(DEMO_NAME "OpenARK_demo")
 set(TEST_NAME "OpenARK_test")
 set(LIB_NAME "OpenARK")
 
-option(BUILD_LIB "BUILD_LIB" ON)
+option(BUILD_LIB "BUILD_LIB" OFF)
 option(BUILD_TESTS "BUILD_TESTS" OFF)
 option(USE_PMD "USE_PMD" OFF) 
 
@@ -40,6 +40,41 @@ if(OpenCV_FOUND)
    message(STATUS "Found OpenCV: ${OpenCV_INCLUDE_DIRS}")
 endif(OpenCV_FOUND)
 
+find_package( Eigen REQUIRED )
+include_directories(${EIGEN_INCLUDE_DIR}) 
+
+find_package(Ceres REQUIRED)
+IF(Ceres_FOUND)
+   MESSAGE(STATUS "Found Ceres: ${CERES_INCLUDE_DIRS}")
+ENDIF(Ceres_FOUND)
+include_directories(${CERES_INCLUDE_DIRS})
+
+# require okvis
+find_package( okvis 1.1 REQUIRED)
+include_directories(${OKVIS_INCLUDE_DIRS})
+message(STATUS "Okvis at ${OKVIS_INCLUDE_DIRS}.")
+
+# require brisk
+find_package( brisk 2 REQUIRED)
+include_directories(${BRISK_INCLUDE_DIRS})
+
+find_package(DBoW2 REQUIRED)
+IF(DBoW2_FOUND)
+   MESSAGE(STATUS "Found DBoW2: ${DBoW2_INCLUDE_DIRS}")
+ENDIF(DBoW2_FOUND)
+
+find_package(DLib REQUIRED)
+IF(DLib_FOUND)
+   MESSAGE(STATUS "Found DLib: ${DLib_LIBRARIES}")
+ENDIF(DLib_FOUND)
+
+
+find_package(realsense REQUIRED)
+IF(RealSense_FOUND)
+   MESSAGE(STATUS "Found RealSense: ${RealSense_INCLUDE_DIRS}")
+ENDIF(RealSense_FOUND)
+include_directories(${RealSense_INCLUDE_DIRS}) 
+
 if(NOT USE_PMD)
   find_package(RSSDK)
   if(RSSDK_FOUND)
@@ -57,12 +92,19 @@ endif(USE_PMD OR NOT RSSDK_FOUND)
 include_directories(
   ${OpenCV_INCLUDE_DIRS}
   ${PCL_INCLUDE_DIRS}
+  ${DBoW2_INCLUDE_DIRS}
+  ${DLib_INCLUDE_DIRS}
 )
 
 set(
   DEPENDENCIES  
   ${OpenCV_LIBRARIES}
   ${PCL_LIBRARIES}
+  ${EIGEN_LIBRARIES}
+  ${Realsense_LIBRARIES} 
+  ${RealSense_LIBRARY} 
+  ${OKVIS_LIBRARIES}
+  ${CERES_LIBRARIES}
 )
 
 add_definitions(
@@ -74,6 +116,8 @@ endforeach()
 
 set(
   SOURCES 
+  ZR300Camera.cpp
+  OkvisSLAMSystem.cpp
   FrameObject.cpp 
   Hand.cpp FramePlane.cpp 
   Webcam.cpp 
@@ -90,6 +134,9 @@ set(
 
 set(
   HEADERS 
+  ZR300Camera.h
+  OkvisSLAMSystem.h
+  SLAMSystem.h
   FrameObject.h
   ObjectParams.h
   Hand.h FramePlane.h
@@ -104,6 +151,7 @@ set(
   Converter.h
   stdafx.h
   HandClassifier.h
+  single_consumer_priority_queue.h
 )
 
 if(NOT RSSDK_FOUND)
@@ -152,7 +200,7 @@ if (MSVC)
     add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 endif(MSVC)
 
-add_executable( ${DEMO_NAME} main.cpp ${SOURCES} ${HEADERS})
+add_executable( ${DEMO_NAME} samplecode/SlamDemo.cpp ${SOURCES} ${HEADERS})
 
 if(${BUILD_LIB})
     add_library(${LIB_NAME} STATIC core.h ${SOURCES} ${HEADERS})

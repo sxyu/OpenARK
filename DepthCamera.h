@@ -217,6 +217,11 @@ namespace ark {
         bool writeImage(std::string destination) const;
 
     protected:
+        /** Mutexes to ensure thread safety while updating images 
+         *  (mutable = modificable even to const methods)
+         */
+        mutable std::mutex imageMutex;
+        
         /**
          * Matrix storing the (x,y,z) data of every point in the observable world.
          * Matrix type CV_32FC3
@@ -387,10 +392,5 @@ namespace ark {
         cv::Mat irMapBuf;
         cv::Mat ampMapBuf;
         cv::Mat flagMapBuf;
-
-        /** Mutexes to ensure thread safety while updating images 
-         *  (mutable = modificable even to const methods)
-         */
-        mutable std::mutex imageMutex;
     };
 }
