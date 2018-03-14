@@ -1,48 +1,64 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required( VERSION 2.8 )
 
 project( OpenARK )
+set( OpenARK_VERSION_MAJOR 0 )
+set( OpenARK_VERSION_MINOR 9 )
+set( OpenARK_VERSION_PATCH 3 )
+set( SVM_PATHS "\"svm/\", \"../svm/\", \"\"" )
+set( INCLUDE_DIR "${PROJECT_SOURCE_DIR}/include" )
 
-set(OpenARK_VERSION_MAJOR 0)
-set(OpenARK_VERSION_MINOR 9)
-set(OpenARK_VERSION_PATCH 1)
+set( CMAKE_CXX_STACK_SIZE "10000000" )
+set( CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake_modules" )
 
-set(SVM_PATHS "\"svm/\", \"../svm/\", \"\"")
-
-set(CMAKE_CXX_STACK_SIZE "10000000")
-set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake_modules")
-
-set(DEMO_NAME "OpenARK_demo")
-set(TEST_NAME "OpenARK_test")
-set(LIB_NAME "OpenARK")
-
-option(BUILD_LIB "BUILD_LIB" OFF)
-option(BUILD_TESTS "BUILD_TESTS" OFF)
-option(USE_PMD "USE_PMD" OFF) 
-
-include(CheckCXXCompilerFlag)
-CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
-CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
-if(COMPILER_SUPPORTS_CXX11)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 /EHsc")
-elseif(COMPILER_SUPPORTS_CXX0X)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x /EHsc")
-else()
-    message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
+if( NOT CMAKE_BUILD_TYPE )
+  set( CMAKE_BUILD_TYPE Release )
 endif()
+
+set( LIB_NAME "OpenARK" )
+set( DEMO_NAME "OpenARK_demo" )
+set( TEST_NAME "OpenARK_test" )
+set( UNITY_PLUGIN_NAME "UnityPlugin" )
+
+option( BUILD_DEMO "BUILD_DEMO" ON )
+option( BUILD_TESTS "BUILD_TESTS" OFF )
+option( BUILD_UNITY_PLUGIN "BUILD_UNITY_PLUGIN" ON )
+option( USE_REALSENSE "USE_REALSENSE" ON ) 
+option( USE_RSSDK "USE_RSSDK" OFF ) 
+option( USE_PMDSDK "USE_PMDSDK" OFF ) 
+
+include( CheckCXXCompilerFlag )
+CHECK_CXX_COMPILER_FLAG( "-std=c++11" COMPILER_SUPPORTS_CXX11 )
+CHECK_CXX_COMPILER_FLAG( "-std=c++0x" COMPILER_SUPPORTS_CXX0X )
+
+if( COMPILER_SUPPORTS_CXX11 )
+    set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11" )
+elseif( COMPILER_SUPPORTS_CXX0X )
+    set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x" )
+else()
+    message( STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler." )
+endif()
+
+if ( CMAKE_COMPILER_IS_GNUCXX )
+    set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated -Wno-deprecated-declarations -O3 -g" )
+endif ( CMAKE_COMPILER_IS_GNUCXX )
 
 set(Boost_USE_STATIC_LIBS ON) 
 set(Boost_USE_STATIC ON)
 
+# require PCL
 find_package( PCL REQUIRED )
 
+# require OpenCV
 find_package( OpenCV REQUIRED )
 if(OpenCV_FOUND)
    message(STATUS "Found OpenCV: ${OpenCV_INCLUDE_DIRS}")
 endif(OpenCV_FOUND)
 
+# require Eigen
 find_package( Eigen REQUIRED )
 include_directories(${EIGEN_INCLUDE_DIR}) 
 
+# require Ceres
 find_package(Ceres REQUIRED)
 IF(Ceres_FOUND)
    MESSAGE(STATUS "Found Ceres: ${CERES_INCLUDE_DIRS}")
@@ -58,36 +74,41 @@ message(STATUS "Okvis at ${OKVIS_INCLUDE_DIRS}.")
 find_package( brisk 2 REQUIRED)
 include_directories(${BRISK_INCLUDE_DIRS})
 
+# require DBoW2
 find_package(DBoW2 REQUIRED)
 IF(DBoW2_FOUND)
    MESSAGE(STATUS "Found DBoW2: ${DBoW2_INCLUDE_DIRS}")
 ENDIF(DBoW2_FOUND)
 
+# require DLib
 find_package(DLib REQUIRED)
 IF(DLib_FOUND)
    MESSAGE(STATUS "Found DLib: ${DLib_LIBRARIES}")
 ENDIF(DLib_FOUND)
 
+# Intel RealSense SDK 2
+if( USE_REALSENSE )
+  find_package( REALSENSE )
+  if( REALSENSE_FOUND )
+       message( STATUS "Found RealSense: ${REALSENSE_INCLUDE_DIR}" )
+  endif( REALSENSE_FOUND )
+endif( USE_REALSENSE )
 
-find_package(realsense REQUIRED)
-IF(RealSense_FOUND)
-   MESSAGE(STATUS "Found RealSense: ${RealSense_INCLUDE_DIRS}")
-ENDIF(RealSense_FOUND)
-include_directories(${RealSense_INCLUDE_DIRS}) 
+# Windows RealSense SDK
+if( USE_RSSDK OR NOT REALSENSE_FOUND )
+  find_package( RSSDK )
+  if( RSSDK_FOUND )
+       message( STATUS "Found RSSDK: ${RSSDK_INCLUDE_DIR}" )
+  endif( RSSDK_FOUND )
+endif( USE_RSSDK OR NOT REALSENSE_FOUND )
 
-if(NOT USE_PMD)
-  find_package(RSSDK)
-  if(RSSDK_FOUND)
-       message(STATUS "Found RSSDK: ${RSSDK_INCLUDE_DIR}")
-  endif(RSSDK_FOUND)
-endif(NOT USE_PMD)
-
-if(USE_PMD OR NOT RSSDK_FOUND)
-  find_package( PMDSDK REQUIRED)
-  if(PMDSDK_FOUND)
-     message(STATUS "Found PMDSDK: ${PMDSDK_INCLUDE_DIR}")
-  endif(PMDSDK_FOUND)
-endif(USE_PMD OR NOT RSSDK_FOUND)
+# PMD SDK
+if( USE_PMDSDK OR ( NOT RSSDK_FOUND AND NOT REALSENSE_FOUND ) )
+  find_package( PMDSDK REQUIRED )
+  if( PMDSDK_FOUND )
+     message( STATUS "Found PMDSDK: ${PMDSDK_INCLUDE_DIR}" )
+  endif( PMDSDK_FOUND )
+endif( USE_PMDSDK OR ( NOT RSSDK_FOUND AND NOT REALSENSE_FOUND ) )
 
 include_directories(
   ${OpenCV_INCLUDE_DIRS}
@@ -116,126 +137,140 @@ endforeach()
 
 set(
   SOURCES 
-  ZR300Camera.cpp
   OkvisSLAMSystem.cpp
   FrameObject.cpp 
   Hand.cpp FramePlane.cpp 
   Webcam.cpp 
   DepthCamera.cpp 
   RGBCamera.cpp
-  UDPSender.cpp 
   StreamingAverager.cpp 
   Calibration.cpp 
   Util.cpp	
   Visualizer.cpp	
-  Converter.cpp
   HandClassifier.cpp
+  Detector.cpp
+  HandDetector.cpp
+  PlaneDetector.cpp
 )
 
 set(
   HEADERS 
-  ZR300Camera.h
-  OkvisSLAMSystem.h
-  SLAMSystem.h
-  FrameObject.h
-  ObjectParams.h
-  Hand.h FramePlane.h
-  Webcam.h
-  DepthCamera.h 
-  RGBCamera.h
-  UDPSender.h 
-  StreamingAverager.h 
-  Calibration.h 
-  Util.h	
-  Visualizer.h	
-  Converter.h
-  stdafx.h
-  HandClassifier.h
-  single_consumer_priority_queue.h
+  ${INCLUDE_DIR}/OkvisSLAMSystem.h
+  ${INCLUDE_DIR}/SLAMSystem.h
+  ${INCLUDE_DIR}/FrameObject.h
+  ${INCLUDE_DIR}/DetectionParams.h
+  ${INCLUDE_DIR}/Hand.h ${INCLUDE_DIR}/FramePlane.h
+  ${INCLUDE_DIR}/Webcam.h
+  ${INCLUDE_DIR}/DepthCamera.h 
+  ${INCLUDE_DIR}/RGBCamera.h
+  ${INCLUDE_DIR}/StreamingAverager.h 
+  ${INCLUDE_DIR}/Calibration.h 
+  ${INCLUDE_DIR}/Util.h	
+  ${INCLUDE_DIR}/Visualizer.h	
+  ${INCLUDE_DIR}/HandClassifier.h
+  ${INCLUDE_DIR}/SingleConsumerPriorityQueue.h
+  ${INCLUDE_DIR}/Detector.h
+  ${INCLUDE_DIR}/HandDetector.h
+  ${INCLUDE_DIR}/PlaneDetector.h
 )
 
-if(NOT RSSDK_FOUND)
-  SET(RSSDK "//")
+if( NOT REALSENSE_FOUND )
+  set( _REALSENSE_ "//" )
 else()
-  set(SOURCES ${SOURCES} SR300Camera.cpp)
-  set(HEADERS ${HEADERS} SR300Camera.h)
-endif(NOT RSSDK_FOUND)
+  include_directories(${REALSENSE_INCLUDE_DIRS}) 
+  set( SOURCES ${SOURCES} RS2Camera.cpp ZR300Camera.cpp )
+  set( HEADERS ${HEADERS} ${INCLUDE_DIR}/RS2Camera.h ${INCLUDE_DIR}/ZR300Camera.h )
+  set( DEPENDENCIES ${DEPENDENCIES} ${RSSDK2_LIBRARY} )
+endif( NOT REALSENSE_FOUND )
 
-if(NOT PMDSDK_FOUND)
-  SET(PMDSDK "//")
+if( NOT RSSDK_FOUND )
+  set( _RSSDK_ "//" )
 else()
-  include_directories(${PMDSDK_INCLUDE_DIR})
-  set(SOURCES ${SOURCES} PMDCamera.cpp)
-  set(HEADERS ${HEADERS} PMDCamera.h)
-  set(DEPENDENCIES ${DEPENDENCIES} ${PMDSDK_LIBRARIES})
-endif(NOT PMDSDK_FOUND)
+  include_directories( ${RSSDK_INCLUDE_DIR} )
+  set( SOURCES ${SOURCES} SR300Camera.cpp Converter.cpp )
+  set( HEADERS ${HEADERS} ${INCLUDE_DIR}/SR300Camera.h ${INCLUDE_DIR}/Converter.h )
+endif( NOT RSSDK_FOUND )
 
-configure_file(Version.h.in ${PROJECT_SOURCE_DIR}/version.h)
-set(HEADERS ${HEADERS} version.h)
+if( NOT PMDSDK_FOUND )
+  set( _PMDSDK_ "//" )
+else()
+  include_directories( ${PMDSDK_INCLUDE_DIR} )
+  set( SOURCES ${SOURCES} PMDCamera.cpp )
+  set( HEADERS ${HEADERS} ${INCLUDE_DIR}/PMDCamera.h )
+  set( DEPENDENCIES ${DEPENDENCIES} ${PMDSDK_LIBRARIES} )
+endif( NOT PMDSDK_FOUND )
 
-source_group("Header Files" *.h)
+if ( NOT CMAKE_BUILD_TYPE STREQUAL "Debug" )
+  set( _DEBUG_ "//" )
+endif ( NOT CMAKE_BUILD_TYPE STREQUAL "Debug" )
 
-macro(add_msvc_pch PrecompiledHeader PrecompiledSource SourcesVar)
-  if(MSVC)
-    get_filename_component(PrecompiledBasename ${PrecompiledHeader} NAME_WE)
-    set(PrecompiledBinary "$(IntDir)/${PrecompiledBasename}.pch")
-    set(Sources ${${SourcesVar}})
+configure_file(Version.h.in ${INCLUDE_DIR}/Version.h)
+set(HEADERS ${HEADERS} ${INCLUDE_DIR}/Version.h)
 
-    if(NOT ${PrecompiledSource} STREQUAL "")
-        set(Sources ${Sources} main.cpp)
-        set_source_files_properties(${PrecompiledSource}
-                                    PROPERTIES COMPILE_FLAGS "/Yc\"${PrecompiledHeader}\" /Fp\"${PrecompiledBinary}\""
-                                               OBJECT_OUTPUTS "${PrecompiledBinary}")
-    endif(NOT ${PrecompiledSource} STREQUAL "")
-
-    set_source_files_properties(${Sources}
-                                PROPERTIES COMPILE_FLAGS "/Yu\"${PrecompiledHeader}\" /FI\"${PrecompiledHeader}\" /Fp\"${PrecompiledBinary}\""
-                                           OBJECT_DEPENDS "${PrecompiledBinary}")  
-    list(APPEND ${SourcesVar} ${PrecompiledSource})
-  endif(MSVC)
-endmacro(add_msvc_pch)
+set(LIB_OUTPUT_NAME "openark_${OpenARK_VERSION_MAJOR}_${OpenARK_VERSION_MINOR}_${OpenARK_VERSION_PATCH}")
 
 if (MSVC)
-    add_msvc_pch("stdafx.h" "stdafx.cpp" SOURCES)
+    # MSVC precompiled header
+    set( PRECOMPILED_BINARY "$(IntDir)/stdafx.pch" )
+    set( PRECOMPILED_HEADER "stdafx.h" )
+    set( PRECOMPILED_SOURCE "stdafx.cpp" )
+    
+    set_source_files_properties( ${PRECOMPILED_SOURCE}
+                                PROPERTIES COMPILE_FLAGS "/Yc\"${PRECOMPILED_HEADER}\" /Fp\"${PRECOMPILED_BINARY}\""
+                                           OBJECT_OUTPUTS "${PRECOMPILED_HEADER}" )
+    set_source_files_properties( ${SOURCES}
+                                PROPERTIES COMPILE_FLAGS "/Yu\"${PRECOMPILED_HEADER}\" /FI\"${PRECOMPILED_HEADER}\" /Fp\"${PRECOMPILED_BINARY}\""
+                                           OBJECT_DEPENDS "${PRECOMPILED_HEADER}" )  
+    set( SOURCES ${SOURCES} ${PRECOMPILED_SOURCE} )
+    
     add_definitions(-D_CRT_SECURE_NO_WARNINGS)
-endif(MSVC)
+    set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc /Ot" )
+    set( CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:LIBCMT" )
+    set( CMAKE_SHARED_LINKER_FLAGS  "${CMAKE_SHARED_LINKER_FLAGS} /NODEFAULTLIB:LIBCMT" )
+    set( CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MD" )
+    set( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MDd" )
+endif (MSVC)
 
-add_executable( ${DEMO_NAME} samplecode/SlamDemo.cpp ${SOURCES} ${HEADERS})
+add_library(${LIB_NAME} STATIC "${INCLUDE_DIR}/Core.h" "stdafx.h" ${SOURCES} ${HEADERS})
+set_target_properties( ${LIB_NAME} PROPERTIES OUTPUT_NAME ${LIB_OUTPUT_NAME})
+set_property(TARGET ${LIB_NAME} PROPERTY DBG_POSTFIX d)
+target_link_libraries( ${LIB_NAME} ${DEPENDENCIES} )
+target_include_directories( ${LIB_NAME} PRIVATE ${INCLUDE_DIR} )
 
-if(${BUILD_LIB})
-    add_library(${LIB_NAME} STATIC core.h ${SOURCES} ${HEADERS})
-    set_target_properties( ${LIB_NAME} PROPERTIES OUTPUT_NAME 
-            "openark_${OpenARK_VERSION_MAJOR}_${OpenARK_VERSION_MINOR}_${OpenARK_VERSION_PATCH}")
-    set_target_properties(${LIB_NAME} PROPERTIES COMPILE_FLAGS "/MDd")
-    set_property(TARGET ${LIB_NAME} PROPERTY DBG_POSTFIX d)
-    target_link_libraries( ${LIB_NAME} ${DEPENDENCIES} )
-endif(${BUILD_LIB})
+if(${BUILD_DEMO})
+    add_executable( ${DEMO_NAME} main.cpp )
+    target_link_libraries( ${DEMO_NAME} ${DEPENDENCIES} ${LIB_NAME} )
+    set_target_properties( ${DEMO_NAME} PROPERTIES OUTPUT_NAME ${LIB_NAME})
+    set_target_properties( ${DEMO_NAME} PROPERTIES COMPILE_FLAGS ${TARGET_COMPILE_FLAGS})
+    target_include_directories( ${DEMO_NAME} PRIVATE ${INCLUDE_DIR} )
+endif(${BUILD_DEMO})
 
-target_link_libraries( ${DEMO_NAME} ${DEPENDENCIES} )
-set_target_properties( ${DEMO_NAME} PROPERTIES OUTPUT_NAME "OpenARK")
-set_target_properties( ${DEMO_NAME} PROPERTIES COMPILE_FLAGS ${TARGET_COMPILE_FLAGS})
+# Unity plugin currently only supports Windows
+if( ${BUILD_UNITY_PLUGIN} AND MSVC )
+    add_library( ${UNITY_PLUGIN_NAME} SHARED "unity/native/UnityInterface.cpp" "unity/native/UnityInterface.h" "unity/README.md" )
+    set( HEADERS ${HEADERS} "unity/native/UnityInterface.h" )
+    target_link_libraries( ${UNITY_PLUGIN_NAME} ${DEPENDENCIES} ${LIB_NAME} )
+    set_property( TARGET ${UNITY_PLUGIN_NAME} PROPERTY DBG_POSTFIX d )
+    target_include_directories( ${UNITY_PLUGIN_NAME} PRIVATE ${INCLUDE_DIR} "unity/native" )
+    set_target_properties( ${UNITY_PLUGIN_NAME} PROPERTIES OUTPUT_NAME "openark_unity_${OpenARK_VERSION_MAJOR}_${OpenARK_VERSION_MINOR}_${OpenARK_VERSION_PATCH}_native" )
+endif( ${BUILD_UNITY_PLUGIN} AND MSVC )
 
-if(${BUILD_TESTS})
-  if(NOT EXISTS ${PROJECT_SOURCE_DIR}/OpenARK_test)
+if( ${BUILD_TESTS} )
+  if( NOT EXISTS ${PROJECT_SOURCE_DIR}/OpenARK_test )
     execute_process(
       COMMAND git clone https://github.com/augcog/OpenARK_test.git
-      WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
-  #else()
-  #  execute_process(
-  #  COMMAND git pull
-  #    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/OpenARK_test)
-  endif(NOT EXISTS ${PROJECT_SOURCE_DIR}/OpenARK_test)
+      WORKING_DIRECTORY ${PROJECT_SOURCE_DIR} )
+  endif( NOT EXISTS ${PROJECT_SOURCE_DIR}/OpenARK_test )
 
-  set(
-    TEST_SOURCES 
-    OpenARK_test/test.cpp
-    OpenARK_test/TestCamera.cpp
-  )
-
-  add_msvc_pch("../stdafx.h" "" TEST_SOURCES)
-
-  add_executable( ${TEST_NAME} ${TEST_SOURCES} ${SOURCES} OpenARK_test/TestCamera.h ${HEADERS})
-  target_link_libraries( ${TEST_NAME} ${DEPENDENCIES} )
+  add_executable( ${TEST_NAME} "OpenARK_test/test.cpp" "OpenARK_test/TestCamera.cpp" "OpenARK_test/TestCamera.h" )
+  set( HEADERS ${HEADERS} "OpenARK_test/TestCamera.h" )
+  
+  target_link_libraries( ${TEST_NAME} ${DEPENDENCIES} ${LIB_NAME} )
   set_target_properties( ${TEST_NAME} PROPERTIES
-    COMPILE_FLAGS ${TARGET_COMPILE_FLAGS})
-endif(${BUILD_TESTS})
+    COMPILE_FLAGS ${TARGET_COMPILE_FLAGS} )
+    
+  target_include_directories( ${TEST_NAME} PRIVATE ${INCLUDE_DIR} )
+endif( ${BUILD_TESTS} )
+
+# Create source group for headers
+source_group( "Header Files" FILES ${HEADERS} )

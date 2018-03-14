@@ -2,67 +2,62 @@
 #include <stdio.h>
 #include <iostream>
 #include <string>
+#include <memory>
 
 // OpenCV Libraries
 #include <opencv/cxcore.h>
 #include "opencv2/highgui/highgui.hpp"
 
 // OpenARK Libraries
+#include "Core.h"
 #include "SR300Camera.h"
 #include "Visualizer.h"
-#include "Hand.h"
-#include "Plane.h"
-#include "Util.h"
 
 using namespace ark;
 
 int main() {
-	DepthCamera* camera = new SR300Camera();
-	int frame = 0;
+    // initialize
+    ark::DepthCamera::Ptr camera = std::make_shared<ark::SR300Camera>();
+    ark::DetectionParams::Ptr params = ark::DetectionParams::create();
+    ark::PlaneDetector planeDetector(params);
 
-	while (true)
-	{
-        camera->nextFrame();
-		// // Load in the debug data
-		// std::string filename = "..//OpenARK_Datasets//ClusterDataSet1//img" + std::to_string(frame) + ".yml";
-		// if (!camera->readImage(filename))
-			// break;
+    // use the plane detector to remove planes and detect contact points
+    ark::HandDetector handDetector(planeDetector, params);
 
-		// Show image
-		cv::imshow("XYZ Map", Visualizer::visualizeXYZMap(camera->getXYZMap()));
+    camera->beginCapture();
 
-		// // Find the plane
-		// Plane plane = Plane::Plane(camera->getXYZMap());
-		// Visualizer::visualizeCloud(plane.getDownCloud());
-		// cv::imshow("Plane Regression", Visualizer::visualizePlaneRegression(camera->getXYZMap(), plane.getPlaneEquation(), plane.R_SQUARED_DISTANCE_THRESHOLD));
+    int frame = 0;
+    while (true)
+    {
+        // Show image
+        cv::Mat xyzVisual; ark::Visualizer::visualizeXYZMap(camera->getXYZMap(), xyzVisual);
+        cv::imshow("XYZ Map", xyzVisual);
 
-		// // Remove the plane
-		// camera->removePoints(plane.getPlaneIndicies());
-		// cv::imshow("Hand Map", Visualizer::visualizeXYZMap(camera->getXYZMap()));
-		// camera->computeClusters(0.02, 500);
+        // Update detectors
+        planeDetector->update(*camera);
+        handDetector->update(*camera);
 
-		// Find the right hand
-        auto hands = camera->queryHands();
-		Hand right_hand = hands[0].getHand();
+        // Detect objects in frame
+        auto planes = planeDetector->getPlanes();
+        auto hands = handDetector->getHands();
 
-		// Show the hand
-		cv::imshow("Hand", Visualizer::visualizeHand(camera->getXYZMap(), right_hand.pointer_finger_ij, right_hand.shape_centroid_ij));
-		// if (right_hand.touchObject(plane.getPlaneEquation(), plane.R_SQUARED_DISTANCE_THRESHOLD * 3) == true)
-		// {
-			// printf("Touched Plane\n");
-		// }
+        // Find the hand assigned the highest confidence
+        ark::Hand::Ptr primary_hand = hands[0];
 
+        // Show the hand, along with the SVM confidence and contact points
+        cv::Mat visual = camera->getXYZMap().clone();
+        ark::Visualizer::visualizeHand(visual, visual, primary_hand.get(), primary_hand->getSVMConfidence(), &planes);
+        cv::imshow("Result", visual);
 
-		/**** Start: Loop Break Condition ****/
-		int c = cvWaitKey(1);
-		if (c == 'q' || c == 'Q' || c == 27) {
-			break;
-		}
-		/**** End: Loop Break Condition ****/
+        /**** Start: Loop Break Condition ****/
+        int c = cv::waitKey(1);
+        if (c == 'q' || c == 'Q' || c == 27) {
+            break;
+        }
+        /**** End: Loop Break Condition ****/
 
-		frame++;
-	}
+        frame++;
+    }
 
-	camera->destroyInstance();
-	return 0;
+    return 0;
 }

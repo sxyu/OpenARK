@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#include "version.h"
+#include "Version.h"
 #include "Visualizer.h"
 #include "Util.h"
 
@@ -20,16 +20,15 @@ namespace ark {
     ***/
     void Visualizer::visualizeDepthMap(const cv::Mat & depth_map, cv::Mat & output)
     {
-        if (output.rows == 0) output.create(depth_map.size(), CV_8UC3);
         cv::normalize(depth_map, output, 0, 255, cv::NORM_MINMAX, CV_8UC1);
         cv::applyColorMap(output, output, cv::COLORMAP_HOT);
     }
 
     void Visualizer::visualizeXYZMap(const cv::Mat & xyzMap, cv::Mat & output)
     {
-        cv::Mat channels[3];
-        cv::split(xyzMap, channels);
-        visualizeDepthMap(channels[2], output);
+        cv::Mat depth;
+        cv::extractChannel(xyzMap, depth, 2);
+        visualizeDepthMap(depth, output);
     }
 
     void Visualizer::visualizeNormalMap(const cv::Mat & normal_map, cv::Mat & output, 
@@ -61,7 +60,7 @@ namespace ark {
 
     void Visualizer::visualizeHand(const cv::Mat & background, cv::Mat & output,
                 Hand * hand, double display,
-                const std::vector<boost::shared_ptr<FramePlane> > * touch_planes)
+                const std::vector<std::shared_ptr<FramePlane> > * touch_planes)
     {
         if (background.type() == CV_32FC3)
         {
@@ -94,8 +93,9 @@ namespace ark {
             cv::Scalar(255, 255, 0), unitWid * 1.5);
 
         // faint outline of largest inscribed circle
-        cv::circle(output, center, hand->getCircleRadius(), cv::Scalar(100, 100, 100), 1);
-        
+        cv::circle(output, center, hand->getCircleRadius(), cv::Scalar(100, 100, 100), 
+            std::round(unitWid));
+
         const std::vector<Point2i> & fingers = hand->getFingersIJ();
         const std::vector<Point2i> & defects = hand->getDefectsIJ();
         const std::vector<Vec3f> & fingersXYZ = hand->getFingers();
@@ -146,14 +146,19 @@ namespace ark {
                 sstr.str(),
                 (defects[i] + center) / 2 - Point2i(15, 0), 0,
                 0.4 * unitWid, cv::Scalar(0, 255, 255), 1);
-
-            if (display < FLT_MAX) {
-                // provided display text
-                sstr.str("");
-                sstr << std::setprecision(3) << std::fixed << display;
-                Point2i dispPt = center - Point2i((int)sstr.str().size() * 8, 0);
-                cv::putText(output, sstr.str(), dispPt, 0, 0.8, cv::Scalar(255, 255, 255), 1);
-            }
+        }
+        
+        // draw dominant direction arrow
+        Point2f dir = hand->getDominantDirection();
+        cv::arrowedLine(output, Point2f(center), Point2f(center) + dir * 50,
+            cv::Scalar(200, 200, 120), std::round(unitWid * 3), 8, 0, 0.3);
+            
+        if (display < FLT_MAX) {
+            // draw provided display text
+            std::stringstream sstr;
+            sstr << std::setprecision(3) << std::fixed << display;
+            Point2i dispPt = center - Point2i((int)sstr.str().size() * 8, 0);
+            cv::putText(output, sstr.str(), dispPt, 0, 0.8, cv::Scalar(255, 255, 255), 1);
         }
     }
 
