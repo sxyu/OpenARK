@@ -71,7 +71,7 @@ namespace ark {
     * @param [out] amp_map amplitude map. CV_32FC1 (NOT USED)
     * @param [out] flag_map flag map. CV_8UC1 (NOT USED)
     */
-    void SR300Camera::update(cv::Mat & xyz_map, cv::Mat & rgb_map, cv::Mat & ir_map, 
+    void SR300Camera::update(cv::Mat & xyz_map, cv::Mat & rgb_map, cv::Mat & ir_map, cv::Mat & fisheye_map,
                              cv::Mat & amp_map, cv::Mat & flag_map) 
     {
         Status sts = sm->AcquireFrame(true);

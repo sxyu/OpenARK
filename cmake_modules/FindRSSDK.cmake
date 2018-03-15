@@ -22,11 +22,14 @@
 
 find_path(RSSDK_DIR
     NAMES include/pxcbase.h
+    HINTS $ENV{RSSDK_DIR}
+    PATHS ${ARK_DEPENDENCY_DIR}
 )
 
 find_path(RSSDK_INCLUDE_DIR
     NAMES pxcbase.h
     HINTS $ENV{RSSDK_DIR}/include 
+    PATHS ${ARK_DEPENDENCY_DIR}/include
 )
 
 include(FindPackageHandleStandardArgs)

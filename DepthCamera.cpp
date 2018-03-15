@@ -42,7 +42,7 @@ namespace ark {
         initializeImages();
 
         // call update with back buffer images (to allow continued operation on front end)
-        update(xyzMapBuf, rgbMapBuf, irMapBuf, ampMapBuf, flagMapBuf);
+        update(xyzMapBuf, rgbMapBuf, irMapBuf, fishEyeMapBuf, ampMapBuf, flagMapBuf);
 
         if (!badInput() && xyzMapBuf.data) {
             if (removeNoise) {
@@ -141,17 +141,18 @@ namespace ark {
             rgbMapBuf.release();
             rgbMapBuf.create(sz, CV_8UC3);
         }
-
         if (hasIRMap()) {
             irMapBuf.release();
             irMapBuf.create(sz, CV_8U);
         }
-
+        if (hasFishEyeMap()) {
+            fishEyeMapBuf.release();
+            fishEyeMapBuf.create(sz, CV_8U);
+        }
         if (hasAmpMap()) {
             ampMapBuf.release();
             ampMapBuf.create(sz, CV_32F);
         }
-
         if (hasFlagMap()) {
             flagMapBuf.release();
             flagMapBuf.create(sz, CV_8U);
@@ -175,6 +176,7 @@ namespace ark {
         cv::swap(xyzMap, xyzMapBuf);
         swapBuffer(&DepthCamera::hasRGBMap, rgbMap, rgbMapBuf);
         swapBuffer(&DepthCamera::hasIRMap, irMap, irMapBuf);
+        swapBuffer(&DepthCamera::hasFishEyeMap, fishEyeMap, fishEyeMapBuf);
         swapBuffer(&DepthCamera::hasAmpMap, ampMap, ampMapBuf);
         swapBuffer(&DepthCamera::hasFlagMap, flagMap, flagMapBuf);
     }
@@ -192,6 +194,7 @@ namespace ark {
         fs << "flagMap" << flagMap;
         fs << "rgbMap" << rgbMap;
         fs << "irMap" << irMap;
+        fs << "fishEyeMap" << irMap;
 
         fs.release();
         return true;
@@ -212,6 +215,7 @@ namespace ark {
         fs["flagMap"] >> flagMap;
         fs["rgbMap"] >> rgbMap;
         fs["irMap"] >> irMap;
+        fs["fishEyeMap"] >> irMap;
         fs.release();
 
         // call callbacks
@@ -263,6 +267,15 @@ namespace ark {
         if (irMap.data == nullptr) return cv::Mat::zeros(getImageSize(), CV_8U);
         return irMap;
     }
+    
+    const cv::Mat DepthCamera::getFishEyeMap() const
+    {
+        if (!hasFishEyeMap()) throw;
+
+        std::lock_guard<std::mutex> lock(imageMutex);
+        if (fishEyeMap.data == nullptr) return cv::Mat::zeros(getImageSize(), CV_8U);
+        return fishEyeMap;
+    }
 
     bool DepthCamera::hasAmpMap() const
     {
@@ -284,6 +297,12 @@ namespace ark {
     bool DepthCamera::hasIRMap() const
     {
         // Assume no IR image, unless overridden
+        return false;
+    }
+    
+    bool DepthCamera::hasFishEyeMap() const
+    {
+        // Assume no FishEye image, unless overridden
         return false;
     }
 

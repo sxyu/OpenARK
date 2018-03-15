@@ -1,7 +1,0 @@
-D:\Programming\3VR\OpenARK\unity\managed\UnityPlugin_cs\bin\Release\openark_unity_0_9_3_managed.dll
-D:\Programming\3VR\OpenARK\unity\managed\UnityPlugin_cs\bin\Release\openark_unity_0_9_3_managed.pdb
-D:\Programming\3VR\OpenARK\unity\managed\UnityPlugin_cs\bin\Release\UnityEngine.dll
-D:\Programming\3VR\OpenARK\unity\managed\UnityPlugin_cs\bin\Release\UnityEngine.xml
-D:\Programming\3VR\OpenARK\unity\managed\UnityPlugin_cs\obj\Release\UnityPlugin_cs.csprojResolveAssemblyReference.cache
-D:\Programming\3VR\OpenARK\unity\managed\UnityPlugin_cs\obj\Release\openark_unity_0_9_3_managed.dll
-D:\Programming\3VR\OpenARK\unity\managed\UnityPlugin_cs\obj\Release\openark_unity_0_9_3_managed.pdb

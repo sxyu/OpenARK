@@ -8,7 +8,10 @@
 #ifdef RSSDK_ENABLED
     #include "SR300Camera.h"
 #endif
-#ifdef RSSDK2_ENABLED
+#ifdef REALSENSE_ENABLED
+    #include "ZR300Camera.h"
+#endif
+#ifdef REALSENSE2_ENABLED
     #include "RS2Camera.h"
 #endif
 
@@ -31,8 +34,10 @@ int main() {
     // initialize the camera
     DepthCamera::Ptr camera;
 
-#if defined(RSSDK2_ENABLED)
+#if defined(REALSENSE2_ENABLED)
     camera = std::make_shared<RS2Camera>();
+#elif defined(REALSENSE_ENABLED)
+    camera = std::make_shared<ZR300Camera>(true);
 #elif defined(RSSDK_ENABLED)
     ASSERT(strcmp(OPENARK_CAMERA_TYPE, "sr300") == 0, "Unsupported RealSense camera type.");
     camera = std::make_shared<SR300Camera>();

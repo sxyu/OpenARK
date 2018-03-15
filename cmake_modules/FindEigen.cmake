@@ -107,7 +107,7 @@ list(APPEND EIGEN_CHECK_PATH_SUFFIXES
 find_path(EIGEN_INCLUDE_DIR
   NAMES Eigen/Core
   PATHS ${EIGEN_INCLUDE_DIR_HINTS}
-  ${EIGEN_CHECK_INCLUDE_DIRS}
+  ${EIGEN_CHECK_INCLUDE_DIRS} ${ARK_DEPENDENCY_DIR}/include/eigen3 ${ARK_DEPENDENCY_DIR}/include
   PATH_SUFFIXES ${EIGEN_CHECK_PATH_SUFFIXES})
 
 if (NOT EIGEN_INCLUDE_DIR OR
@@ -161,9 +161,7 @@ endif (EIGEN_FOUND)
 
 # Handle REQUIRED / QUIET optional arguments and version.
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(Eigen
-  REQUIRED_VARS EIGEN_INCLUDE_DIRS
-  VERSION_VAR EIGEN_VERSION)
+find_package_handle_standard_args(Eigen REQUIRED_VARS EIGEN_INCLUDE_DIRS VERSION_VAR EIGEN_VERSION)
 
 # Only mark internal variables as advanced if we found Eigen, otherwise
 # leave it visible in the standard GUI for the user to set manually.

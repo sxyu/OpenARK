@@ -15,14 +15,17 @@ if( NOT CMAKE_BUILD_TYPE )
 endif()
 
 set( LIB_NAME "OpenARK" )
-set( DEMO_NAME "OpenARK_demo" )
 set( TEST_NAME "OpenARK_test" )
 set( UNITY_PLUGIN_NAME "UnityPlugin" )
 
-option( BUILD_DEMO "BUILD_DEMO" ON )
+set( HAND_DEMO_NAME "Hand_demo" )
+set( SLAM_DEMO_NAME "SLAM_demo" )
+
+option( BUILD_DEMOS "BUILD_DEMOS" ON )
 option( BUILD_TESTS "BUILD_TESTS" OFF )
-option( BUILD_UNITY_PLUGIN "BUILD_UNITY_PLUGIN" ON )
-option( USE_REALSENSE "USE_REALSENSE" ON ) 
+option( BUILD_UNITY_PLUGIN "BUILD_UNITY_PLUGIN" ON ) # Windows only
+option( USE_REALSENSE2 "USE_REALSENSE2" ON ) 
+option( USE_REALSENSE "USE_REALSENSE" OFF ) 
 option( USE_RSSDK "USE_RSSDK" OFF ) 
 option( USE_PMDSDK "USE_PMDSDK" OFF ) 
 
@@ -59,56 +62,75 @@ find_package( Eigen REQUIRED )
 include_directories(${EIGEN_INCLUDE_DIR}) 
 
 # require Ceres
-find_package(Ceres REQUIRED)
+find_package( Ceres REQUIRED )
 IF(Ceres_FOUND)
    MESSAGE(STATUS "Found Ceres: ${CERES_INCLUDE_DIRS}")
 ENDIF(Ceres_FOUND)
 include_directories(${CERES_INCLUDE_DIRS})
 
-# require okvis
-find_package( okvis 1.1 REQUIRED)
+# require Okvis
+find_package( Okvis 1.1 REQUIRED )
 include_directories(${OKVIS_INCLUDE_DIRS})
-message(STATUS "Okvis at ${OKVIS_INCLUDE_DIRS}.")
+message(STATUS "Found Okvis: ${OKVIS_INCLUDE_DIRS}")
 
-# require brisk
-find_package( brisk 2 REQUIRED)
+# require glog (should come with Okvis)
+find_package( Glog REQUIRED )
+message(STATUS "Found Glog: ${GLOG_LIBRARIES}")
+
+# require OpenGV (should come with Okvis)
+find_package( OpenGV REQUIRED )
+message(STATUS "Found OpenGV: ${OPENGV_INCLUDE_DIRS}")
+
+# require Brisk
+find_package( Brisk 2 REQUIRED )
 include_directories(${BRISK_INCLUDE_DIRS})
+message(STATUS "Found Brisk: ${BRISK_INCLUDE_DIRS}")
 
 # require DBoW2
-find_package(DBoW2 REQUIRED)
-IF(DBoW2_FOUND)
-   MESSAGE(STATUS "Found DBoW2: ${DBoW2_INCLUDE_DIRS}")
-ENDIF(DBoW2_FOUND)
+find_package( DBoW2 REQUIRED )
+IF( DBoW2_FOUND )
+   MESSAGE( STATUS "Found DBoW2: ${DBoW2_INCLUDE_DIRS}" )
+ENDIF( DBoW2_FOUND )
 
 # require DLib
-find_package(DLib REQUIRED)
-IF(DLib_FOUND)
-   MESSAGE(STATUS "Found DLib: ${DLib_LIBRARIES}")
-ENDIF(DLib_FOUND)
+find_package( DLib REQUIRED )
+IF( DLib_FOUND )
+   MESSAGE( STATUS "Found DLib Library: ${DLib_LIBRARIES}" )
+   MESSAGE( STATUS "Found DLib: ${DLib_INCLUDE_DIRS}" )
+ENDIF( DLib_FOUND )
 
 # Intel RealSense SDK 2
-if( USE_REALSENSE )
-  find_package( REALSENSE )
+if( USE_REALSENSE2 )
+  find_package( RealSense2 )
+  if( REALSENSE2_FOUND )
+      message( STATUS "Found librealsense2: ${REALSENSE2_INCLUDE_DIRS}" )
+  endif( REALSENSE2_FOUND )
+endif( USE_REALSENSE2 )
+
+# Intel RealSense SDK 1
+if( USE_REALSENSE OR NOT REALSENSE2_FOUND )
+  find_package( RealSense )
   if( REALSENSE_FOUND )
-       message( STATUS "Found RealSense: ${REALSENSE_INCLUDE_DIR}" )
+      message( STATUS "Found librealsense: ${REALSENSE_INCLUDE_DIRS}" )
   endif( REALSENSE_FOUND )
-endif( USE_REALSENSE )
+endif( USE_REALSENSE OR NOT REALSENSE2_FOUND )
 
 # Windows RealSense SDK
-if( USE_RSSDK OR NOT REALSENSE_FOUND )
+set(RSSDK_FOUND OFF)
+if( USE_RSSDK OR ( NOT REALSENSE_FOUND AND NOT REALSENSE2_FOUND ) )
   find_package( RSSDK )
   if( RSSDK_FOUND )
-       message( STATUS "Found RSSDK: ${RSSDK_INCLUDE_DIR}" )
+       message( STATUS "Found Windows RSSDK: ${RSSDK_INCLUDE_DIR}" )
   endif( RSSDK_FOUND )
-endif( USE_RSSDK OR NOT REALSENSE_FOUND )
+endif( USE_RSSDK OR ( NOT REALSENSE_FOUND AND NOT REALSENSE2_FOUND ) )
 
 # PMD SDK
-if( USE_PMDSDK OR ( NOT RSSDK_FOUND AND NOT REALSENSE_FOUND ) )
+if( USE_PMDSDK OR ( NOT RSSDK_FOUND AND NOT REALSENSE_FOUND AND NOT REALSENSE2_FOUND ) )
   find_package( PMDSDK REQUIRED )
   if( PMDSDK_FOUND )
      message( STATUS "Found PMDSDK: ${PMDSDK_INCLUDE_DIR}" )
   endif( PMDSDK_FOUND )
-endif( USE_PMDSDK OR ( NOT RSSDK_FOUND AND NOT REALSENSE_FOUND ) )
+endif( USE_PMDSDK OR ( NOT RSSDK_FOUND AND NOT REALSENSE_FOUND AND NOT REALSENSE2_FOUND ) )
 
 include_directories(
   ${OpenCV_INCLUDE_DIRS}
@@ -122,9 +144,14 @@ set(
   ${OpenCV_LIBRARIES}
   ${PCL_LIBRARIES}
   ${EIGEN_LIBRARIES}
-  ${Realsense_LIBRARIES} 
-  ${RealSense_LIBRARY} 
+  ${REALSENSE_LIBRARIES} 
+  ${REALSENSE2_LIBRARIES} 
   ${OKVIS_LIBRARIES}
+  ${DBoW2_LIBRARIES}
+  ${GLOG_LIBRARIES}
+  ${BRISK_LIBRARIES}
+  ${DLib_LIBRARIES}
+  ${OPENGV_LIBRARIES}
   ${CERES_LIBRARIES}
 )
 
@@ -174,13 +201,22 @@ set(
   ${INCLUDE_DIR}/PlaneDetector.h
 )
 
+if( NOT REALSENSE2_FOUND )
+  set( _REALSENSE2_ "//" )
+else()
+  include_directories(${REALSENSE2_INCLUDE_DIRS}) 
+  set( SOURCES ${SOURCES} RS2Camera.cpp )
+  set( HEADERS ${HEADERS} ${INCLUDE_DIR}/RS2Camera.h )
+  set( DEPENDENCIES ${DEPENDENCIES} ${REALSENSE2_LIBRARIES} )
+endif( NOT REALSENSE2_FOUND )
+
 if( NOT REALSENSE_FOUND )
   set( _REALSENSE_ "//" )
 else()
   include_directories(${REALSENSE_INCLUDE_DIRS}) 
-  set( SOURCES ${SOURCES} RS2Camera.cpp ZR300Camera.cpp )
-  set( HEADERS ${HEADERS} ${INCLUDE_DIR}/RS2Camera.h ${INCLUDE_DIR}/ZR300Camera.h )
-  set( DEPENDENCIES ${DEPENDENCIES} ${RSSDK2_LIBRARY} )
+  set( SOURCES ${SOURCES} ZR300Camera.cpp )
+  set( HEADERS ${HEADERS} ${INCLUDE_DIR}/ZR300Camera.h )
+  set( DEPENDENCIES ${DEPENDENCIES} ${REALSENSE_LIBRARIES} )
 endif( NOT REALSENSE_FOUND )
 
 if( NOT RSSDK_FOUND )
@@ -225,10 +261,10 @@ if (MSVC)
     
     add_definitions(-D_CRT_SECURE_NO_WARNINGS)
     set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc /Ot" )
-    set( CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:LIBCMT" )
-    set( CMAKE_SHARED_LINKER_FLAGS  "${CMAKE_SHARED_LINKER_FLAGS} /NODEFAULTLIB:LIBCMT" )
-    set( CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MD" )
-    set( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MDd" )
+    set( CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:LIBCMT /DEBUG" )
+    set( CMAKE_SHARED_LINKER_FLAGS  "${CMAKE_SHARED_LINKER_FLAGS} /NODEFAULTLIB:LIBCMT /DEBUG" )
+    set( CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MD /Zi" )
+    set( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MDd /Zi" )
 endif (MSVC)
 
 add_library(${LIB_NAME} STATIC "${INCLUDE_DIR}/Core.h" "stdafx.h" ${SOURCES} ${HEADERS})
@@ -237,13 +273,21 @@ set_property(TARGET ${LIB_NAME} PROPERTY DBG_POSTFIX d)
 target_link_libraries( ${LIB_NAME} ${DEPENDENCIES} )
 target_include_directories( ${LIB_NAME} PRIVATE ${INCLUDE_DIR} )
 
-if(${BUILD_DEMO})
-    add_executable( ${DEMO_NAME} main.cpp )
-    target_link_libraries( ${DEMO_NAME} ${DEPENDENCIES} ${LIB_NAME} )
-    set_target_properties( ${DEMO_NAME} PROPERTIES OUTPUT_NAME ${LIB_NAME})
-    set_target_properties( ${DEMO_NAME} PROPERTIES COMPILE_FLAGS ${TARGET_COMPILE_FLAGS})
-    target_include_directories( ${DEMO_NAME} PRIVATE ${INCLUDE_DIR} )
-endif(${BUILD_DEMO})
+if(${BUILD_DEMOS})
+    add_executable( ${HAND_DEMO_NAME} main.cpp )
+    target_link_libraries( ${HAND_DEMO_NAME} ${DEPENDENCIES} ${LIB_NAME} )
+    set_target_properties( ${HAND_DEMO_NAME} PROPERTIES OUTPUT_NAME ${HAND_DEMO_NAME})
+    set_target_properties( ${HAND_DEMO_NAME} PROPERTIES COMPILE_FLAGS ${TARGET_COMPILE_FLAGS})
+    target_include_directories( ${HAND_DEMO_NAME} PRIVATE ${INCLUDE_DIR} )
+    if( REALSENSE_FOUND )
+        add_executable( ${SLAM_DEMO_NAME} SlamDemo.cpp )
+        target_link_libraries( ${SLAM_DEMO_NAME} ${DEPENDENCIES} ${LIB_NAME} )
+        set_target_properties( ${SLAM_DEMO_NAME} PROPERTIES OUTPUT_NAME ${SLAM_DEMO_NAME})
+        set_target_properties( ${SLAM_DEMO_NAME} PROPERTIES COMPILE_FLAGS ${TARGET_COMPILE_FLAGS})
+        target_include_directories( ${SLAM_DEMO_NAME} PRIVATE ${INCLUDE_DIR} )
+        set_target_properties( ${SLAM_DEMO_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
+    endif( REALSENSE_FOUND )
+endif(${BUILD_DEMOS})
 
 # Unity plugin currently only supports Windows
 if( ${BUILD_UNITY_PLUGIN} AND MSVC )

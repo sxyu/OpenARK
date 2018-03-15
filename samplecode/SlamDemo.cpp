@@ -56,7 +56,7 @@ int main(int argc, char **argv)
     slam.display();
 
     //std::cout << "camera update started" << std::endl << std::flush; 
-    camera.update();
+    camera.nextFrame();
     //std::cout << "camera update complete" << std::endl << std::flush; 
 
     //convert to okvis time. Note: rs time is in ms, okvis is in s

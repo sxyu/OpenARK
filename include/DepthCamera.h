@@ -54,10 +54,11 @@ namespace ark {
          * @param [out] xyz_map XYZ map (projection point cloud). CV_32FC3
          * @param [out] rgb_map RGB image. CV_8UC3
          * @param [out] ir_map IR image. CV_8UC1
+         * @param [out] fisheye_map FishEye image. CV_8UC1
          * @param [out] amp_map amplitude map. CV_32FC1
          * @param [out] flag_map flag map. CV_8UC1
          */
-        virtual void update(cv::Mat & xyz_map, cv::Mat & rgb_map, cv::Mat & ir_map, 
+        virtual void update(cv::Mat & xyz_map, cv::Mat & rgb_map, cv::Mat & ir_map, cv::Mat & fisheye_map,
                             cv::Mat & amp_map, cv::Mat & flag_map) = 0;
 
     public:
@@ -72,6 +73,11 @@ namespace ark {
          * Returns true if an RGB image is available from this camera.
          */
         virtual bool hasIRMap() const;
+        
+        /**
+         * Returns true if a fisheye image is available from this camera.
+         */
+        virtual bool hasFishEyeMap() const;
 
         /**
          * Returns true if a flag map is available from this camera.
@@ -164,16 +170,22 @@ namespace ark {
         const cv::Mat getXYZMap() const;
 
         /**
-         * Get the RGB Image from this camera, if available. Else, throws an error.
+         * Get the RGB image from this camera, if available. Else, throws an error.
          * Type: CV_8UC3
          */
         const cv::Mat getRGBMap() const;
 
         /**
-         * Get the infrared (IR) Image from this camera, if available. Else, throws an error.
+         * Get the infrared (IR) image from this camera, if available. Else, throws an error.
          * Type: CV_8UC1
          */
         const cv::Mat getIRMap() const;
+        
+        /**
+         * Get the fisheye image from this camera, if available. Else, throws an error.
+         * Type: CV_8UC1
+         */
+        const cv::Mat getFishEyeMap() const;
 
         /**
          * Returns the current AmpMap
@@ -232,6 +244,12 @@ namespace ark {
          * Matrix type CV_8UC1
          */
         cv::Mat irMap;
+        
+        /**
+         * The fisheye image from this camera, if available
+         * Matrix type CV_8UC1
+         */
+        cv::Mat fishEyeMap;
 
         /**
          * Stores pointers to planes visible to the camera in the current frame
@@ -313,6 +331,7 @@ namespace ark {
         cv::Mat irMapBuf;
         cv::Mat ampMapBuf;
         cv::Mat flagMapBuf;
+        cv::Mat fishEyeMapBuf;
 
         /** Mutex to ensure thread safety while updating images 
          *  (mutable = modificable even to const methods)

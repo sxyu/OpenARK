@@ -517,8 +517,9 @@ namespace ark {
                 if (env) {
                     loadPath = path(env) / ipath / FILE_NAME;
                 }
-
-                if (!env || !boost::filesystem::exists(loadPath)) {
+                else {
+                    std::cerr << "WARNING: SVM Failed to load and will be disabled. Please set the" << 
+                        "OPENARK_DIR environment variable to the OpenARK installation directory.\n";
                     trained = false;
                     return trained;
                 }
