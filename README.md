@@ -1,14 +1,12 @@
 # OpenARK
 
-OpenARK is an open-source wearable augmented reality (AR) system founded at UC Berkeley in 2016. The C++ based software offers innovative core functionalities to power a wide range of off-the-shelf AR components, including see-through glasses, depth cameras, and IMUs. The open-source platform includes fundamental tools such as AR-based camera calibration and SLAM, and it also includes higher-level functions to aid human-computer interaction, such as 3D gesture recognition and multi-user collaboration. Currently, it supports both PMD Pico Flexx and Intel RealSense SR300 cameras. OpenARK currently only supports Windows and we have tested our platform with Windows 10 and Visual Studio 2015 Community Edition.
+OpenARK is an open-source wearable augmented reality (AR) system founded at UC Berkeley in 2016. The C++ based software offers innovative core functionalities to power a wide range of off-the-shelf AR components, including see-through glasses, depth cameras, and IMUs. The open-source platform includes fundamental tools such as AR-based camera calibration and SLAM, and it also includes higher-level modules to aid human-computer interaction, such as 3D gesture recognition, plane detection, and multi-user collaboration, all with real-time (30+ FPS) performance. Currently, it supports both PMD Pico Flexx and Intel RealSense SR300 cameras. The project builds natively on both Windows and Linux.
 
 At a Glance
 
-  - **Technology stack**: C++, OpenCV, PCL, Boost, OpenNI, RealSense 3D SDK, PMD SDK
-  - **Status**:  Beta 0.8
-  - **Application Demo**: vimeo.com/205084929
-
-
+  - **Technology stack**: C++, OpenCV, PCL, Boost, Intel RealSense SDK (1 or 2) / PMD SDK
+  - **Status**:  Beta 0.9.3
+  - **Application Demo**: [Vimeo](https://vimeo.com/251436256)
 
 ## Dependencies
 Hardware
@@ -17,23 +15,69 @@ Hardware
 - Transparent AR Glasses (optional)
 
 Software
-- OpenCV 3.2.0
+- OpenCV 3.2.0+
 - PCL 1.8
-- OpenNI 1.5.8
 - Boost 1.6.4
 
 ## Installation
 
-1. Download and install all software depedencies (OpenCV, PCL, OpenNI, Boost, Intel RealSense)
-2. Clone repo to local machine
-3. Open the Visual Studios solution (OpenARK.sln)
-4. If you want to test the OpenARK using OpenARK_test following the given instruction in its repository.
+### Building From Scratch
 
-## Configuration
+Instructions are available in the following documents:
 
-Configure project properties (see /documentation/OpenARK_Setup.pdf)
+- Windows: [documentation/Windows-build-instructions.pdf](https://github.com/augcog/OpenARK/blob/master/documentation/Windows-build-instructions.pdf)
+
+- Linux: [documentation/Linux-build-instructions.md](https://github.com/augcog/OpenARK/blob/master/documentation/Linux-build-instructions.md)
+
+### Prebuilt Binaries (For Windows)
+Prebuilt binaries for 64-bit Windows are available [here](https://github.com/augcog/OpenARK/releases).
+Both the static library (with the headers) and the demo program are included. For the SVM to work properly, the `svm/` folder
+ must be present in the current directory OR under the directory pointed to by the OPENARK_DIR environment variable.
 
 ## Usage
+To use OpenARK in a Visual Studio C++ project:
+
+After setting up all the dependencies (OpenCV, PCL, etc.) according the configuration instructions, add `openark_x_x_x.lib` to `Project > MyProjectProperties > Linker > Input > Additional Dependencies`. Then add `OPENARK_DIR/include` to `C/C++ > General > Additional Include Directories`. Finally, make sure that under `C/C++ > Code Generation`, `Runtime Library` is set to `Multi-threaded DLL (/MD)`.
+
+Now you can #include OpenARK's core header in any file and begin using OpenARK. You would probably also want to include one of the depth camera backend headers (e.g. `SR300Camera.h`).
+
+Here is the outline of a program for performing hand detection:
+```cpp
+...
+#include "core.h"
+#include "SR300Camera.h"
+
+#include "opencv2/core.hpp"
+#include <vector>
+...
+int main() {
+    ark::DepthCamera & camera = ark::SR300Camera(); // OpenARK camera backend
+    ark::HandDetector detector(); // OpenARK hand detector; also see PlaneDetector
+    
+    // start the camera; alternatively, call nextFrame() manually inside the loop (slower)
+    camera.beginCapture(); 
+    ...
+    while (true) {
+        cv::imshow("XYZ Map", camera.getXYZMap());
+
+        detector.update(camera);
+        std::vector<ark::Hand::Ptr> hands = detector.getHands();
+        
+        // do something with the hands detected
+        ...
+        
+        // quit when q is pressed
+        if (cv::waitKey(1) == 'q') break;
+    }
+    
+    ...
+    // automatically stops capture on exit
+}
+```
+
+Additional sample code is available in `samplecode/`.
+
+## Customization
 
 OpenARK is made for easy customization. Please feel free to build on top of this platform to fit your needs.
 
@@ -45,9 +89,6 @@ Code used to run the demo video is included in main.cpp. Additional sample code 
 
 OpenCV prior to 3.2.0 does not offer prebuilt VC14+ binaries. Running VC12 OpenCV binaries with VC14 will result in memories errors in findCountours(). If you are using VC12+ to compile OpenARK, you will need to use CMake to rebuilt OpenCV from source.
 We have used OpenCV 3.2.0 which comes with OpenCV binaries for VC14 to avoid this problem when using Visual Studio 2015.
-
-If you use `using namespace Intel::RealSense;` you will receive the error `Hand::Ambiguous symbol` hence when accessing methods and class members of RealSense use `Intel::RealSense`
-
 
 ## Getting help
 
