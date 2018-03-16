@@ -34,6 +34,9 @@
 #include <boost/polygon/point_data.hpp>
 #include <boost/polygon/segment_data.hpp>
 
+// Eigen
+#include <Eigen/SVD>
+
 // OpenCV Libraries
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
@@ -44,6 +47,7 @@
 #include <opencv2/objdetect/objdetect.hpp>
 #include <opencv2/features2d.hpp>
 #include <opencv2/ml.hpp>
+#include <opencv2/core/eigen.hpp>
 
 // PCL Libraries
 #include <pcl/filters/voxel_grid.h>
@@ -68,8 +72,9 @@
 #include <pcl/features/impl/feature.hpp>
 #include <pcl/point_traits.h>
 
-// Eigen
-#include <Eigen/SVD>
-
 // Flann
 #include <flann/util/serialization.h>
+
+// okvis
+#include <okvis/VioParametersReader.hpp>
+#include <okvis/ThreadedKFVio.hpp>

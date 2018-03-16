@@ -106,8 +106,46 @@ namespace ark {
 
         mDepth_intrin = mpDev->get_stream_intrinsics(rs::stream::depth);
         mColor_intrin = mpDev->get_stream_intrinsics(rs::stream::color);
-        mDepthScale = mpDev->get_depth_scale();
+        
+        /*/ <- add/remove * after the first slash to toggle calibration code. This prints camera/IMU intrinsics you can put in intr.y[a]ml
+        rs::intrinsics fish_intr = mpDev->get_stream_intrinsics(rs::stream::fisheye);
+        Eigen::Matrix4f tf_imu_fish;
+        rs::motion_intrinsics imu_intr = mpDev->get_motion_intrinsics();
+        rs::extrinsics extr_imu_fisheye = mpDev->get_motion_extrinsics_from(rs::stream::fisheye);
+        std::cerr << std::fixed << std::setprecision(10);
+        std::cerr << "CAMERA\n";
+        std::cerr << "distortion_coefficients\n";
+        std::cerr << fish_intr.coeffs[0] << " " << fish_intr.coeffs[1] << " " << fish_intr.coeffs[2] << " " << fish_intr.coeffs[3] << "\n";
+        
+        std::cerr << "focal\n";
+        std::cerr << fish_intr.fx << " " << fish_intr.fy << "\n";
 
+        std::cerr << "principal\n";
+        std::cerr << fish_intr.ppx << " " << fish_intr.ppy << "\n";
+
+        tf_imu_fish << extr_imu_fisheye.rotation[0], extr_imu_fisheye.rotation[1], extr_imu_fisheye.rotation[2], extr_imu_fisheye.translation[0],
+                       extr_imu_fisheye.rotation[3], extr_imu_fisheye.rotation[4], extr_imu_fisheye.rotation[5], extr_imu_fisheye.translation[1],
+                       extr_imu_fisheye.rotation[6], extr_imu_fisheye.rotation[7], extr_imu_fisheye.rotation[8], extr_imu_fisheye.translation[2],
+                       0.0, 0.0, 0.0, 1.0;
+        std::cerr << "T_SC\n";
+        std::cerr << tf_imu_fish.inverse();
+        std::cerr << "\nMOTION\n";
+
+        std::cerr << "a_max " << 176.0
+                  << "\ng_max " << 7.8
+                  << "\nsigma_g_c " << sqrt(imu_intr.gyro.noise_variances[0])
+                  << "\nsigma_a_c " << sqrt(imu_intr.acc.noise_variances[0])
+                  << "\nsigma_bg " << sqrt(imu_intr.gyro.bias_variances[0])
+                  << "\nsigma_ba " << sqrt(imu_intr.acc.bias_variances[0])
+                  << "\nsigma_gw_c " << 4.0e-6
+                  << "\nsigma_aw_c " << 4.0e-5
+                  << "\ntau " << 3600.0
+                  << "\ng " << 9.81007
+                  << "\na0 " << "[0, 0, 0]"
+                  << "\nimu_rate" << 200;
+        //*/ // END of calibration code, do not remove
+
+        mDepthScale = mpDev->get_depth_scale();
         depth_intrinsics = cv::Mat::zeros(3, 3, CV_32FC1);
         depth_intrinsics.at<float>(0, 0) = mColor_intrin.fx;
         depth_intrinsics.at<float>(0, 1) = 0.0f; //Wrong, need change to s
