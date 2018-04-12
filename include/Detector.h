@@ -1,4 +1,5 @@
 #pragma once
+#include "Types.h"
 #include "DepthCamera.h"
 #include "FrameObject.h"
 
@@ -15,12 +16,12 @@ namespace ark {
         Detector(DetectionParams::Ptr params = nullptr);
 
         /**
-         * Update this detector with the given image.
-         * @param image the xyz map
+         * Update this detector with the given MultiCameraFrame.
+         * @param frame the multi camera frame
          * @param params detection parameters (if not provided, uses default parameters)
          * @see DetectionParams
          */
-        void update(const cv::Mat & image);
+        void update(const MultiCameraFrame & frame);
         
         /**
          * Update this detector with a frame taken from the given depth camera.
@@ -38,15 +39,12 @@ namespace ark {
 
     protected:
         /** Primary function for object detection, called after each update. Must override in child classes. */
-        virtual void detect(cv::Mat & image) = 0;
+        virtual void detect(const MultiCameraFrame & image) = 0;
 
         /** Pointer to this detector's object detection parameters */
         DetectionParams::Ptr params; 
 
     private:
-        /** Stores the XYZ map for the current frame */
-        cv::Mat image;
-
         /** Pointer to last-used depth camera. null if last frame is from */
         DepthCamera * lastCamera = nullptr;
 

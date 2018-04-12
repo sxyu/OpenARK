@@ -7,10 +7,9 @@ namespace ark {
         callback = std::bind(&Detector::callbackHelper, this, std::placeholders::_1);
     } 
 
-    void Detector::update(const cv::Mat & image)
+    void Detector::update(const MultiCameraFrame & frame)
     {
-        this->image = image;
-        detect(this->image);
+        detect(frame);
         lastCamera = nullptr;
         onSameFrame = false;
     }
@@ -19,8 +18,9 @@ namespace ark {
     {
         // stop if the camera is still on the same frame as before
         if (onSameFrame && lastCamera == &camera) return;
-        this->image = camera.getXYZMap();
-        detect(this->image);
+        const MultiCameraFrame::Ptr frame = camera.getFrame();
+        if (frame == nullptr) return;
+        detect(*frame);
 
         if (lastCamera != &camera) {
             if (lastCamera) lastCamera->removeUpdateCallback(lastUpdateCallbackID);

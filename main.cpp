@@ -1,5 +1,3 @@
-#include "stdafx.h"
-
 // OpenARK Libraries
 #include "Version.h"
 #ifdef PMDSDK_ENABLED
@@ -15,6 +13,7 @@
     #include "RS2Camera.h"
 #endif
 
+#include <opencv2/core.hpp>
 #include "Core.h"
 #include "Visualizer.h"
 #include "StreamingAverager.h"
@@ -40,7 +39,7 @@ int main() {
     camera = std::make_shared<ZR300Camera>(true);
 #elif defined(RSSDK_ENABLED)
     ASSERT(strcmp(OPENARK_CAMERA_TYPE, "sr300") == 0, "Unsupported RealSense camera type.");
-    camera = std::make_shared<SR300Camera>();
+    camera = std::make_shared<SR300Camera>(false); // change to true for RGB
 #elif defined(PMDSDK_ENABLED)
     camera = std::make_shared<PMDCamera>();
 #endif

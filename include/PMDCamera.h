@@ -32,8 +32,7 @@ namespace ark {
         * Gets new frame from sensor.
         * Updates xyzMap, ampMap, and flagMap. Resets clusters.
         */
-        void update(cv::Mat & xyz_map, cv::Mat & rgb_map, cv::Mat & ir_map, cv::Mat & fisheye_map,
-                             cv::Mat & amp_map, cv::Mat & flag_map) override;
+        void update(MultiCameraFrame & frame) override;
 
         /**
          * Get the camera's model name.
@@ -46,19 +45,27 @@ namespace ark {
         /** get camera frame height */
         int getHeight() const override;
 
+        /** get the flag map confidence threshold */
         float flagMapConfidenceThreshold() const override;
 
+        /** get the amp map confidence threshold */
         int ampMapInvalidFlagValue() const override;
 
         /**
          * Returns true if a flag map is available from this camera.
          */
         bool hasAmpMap() const override;
+        
+        /** Get the current amp map from this camera */
+        const cv::Mat getAmpMap() const override;
 
         /**
          * Returns true if a flag map is available from this camera.
          */
         bool hasFlagMap() const override;
+        
+        /** Get the current flag map from this camera */
+        const cv::Mat getFlagMap() const override;
 
         /** Shared pointer to PMD camera instance */
         typedef std::shared_ptr<PMDCamera> Ptr;

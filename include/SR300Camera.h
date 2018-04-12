@@ -50,11 +50,17 @@ namespace ark {
          */
         bool hasRGBMap() const override;
 
+        /** Get the current RGB image from this camera */
+        const cv::Mat getRGBMap() const override;
+
         /**
          * Returns true if an infrared (IR) image is available from this camera.
          * @return true if an infrared (IR) image is available from this camera.
          */
         bool hasIRMap() const override;
+
+        /** Get the current IR image from this camera */
+        const cv::Mat getIRMap() const override;
 
         /** Shared pointer to SR300 camera instance */
         typedef std::shared_ptr<SR300Camera> Ptr;
@@ -64,8 +70,7 @@ namespace ark {
         * Gets the new frame from the sensor (implements functionality).
         * Updates xyzMap and ir_map.
         */
-        void update(cv::Mat & xyz_map, cv::Mat & rgb_map, cv::Mat & ir_map, cv::Mat & fisheye_map,
-                            cv::Mat & amp_map, cv::Mat & flag_map) override;
+        void update(MultiCameraFrame & frame) override;
 
     private:
         /**
@@ -100,7 +105,6 @@ namespace ark {
         // Private Variables
         float* dists;
         float* amps;
-        cv::Mat frame;
         const int depth_fps = 30;
         int depth_width;
         int depth_height;

@@ -49,12 +49,18 @@ namespace ark {
          * @return true if an RGB image is available from this camera.
          */
         bool hasRGBMap() const override;
+        
+        /** Get the current RGB image from this camera */
+        const cv::Mat getRGBMap() const override;
 
         /**
          * Returns true if an infrared (IR) image is available from this camera.
          * @return true if an infrared (IR) image is available from this camera.
          */
         bool hasIRMap() const override;
+        
+        /** Get the current IR image from this camera */
+        const cv::Mat getIRMap() const override;
 
         /** Shared pointer to SR300 camera instance */
         typedef std::shared_ptr<RS2Camera> Ptr;
@@ -64,8 +70,7 @@ namespace ark {
         * Gets the new frame from the sensor (implements functionality).
         * Updates xyzMap and ir_map.
         */
-        void update(cv::Mat & xyz_map, cv::Mat & rgb_map, cv::Mat & ir_map, 
-                            cv::Mat & amp_map, cv::Mat & flag_map) override;
+        void update(MultiCameraFrame & frame) override;
 
         /**
          * Initialize the camera, opening channels and resetting to initial configurations

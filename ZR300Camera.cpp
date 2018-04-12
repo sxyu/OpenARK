@@ -91,11 +91,11 @@ namespace ark {
         mpDev->set_frame_callback(rs::stream::color, rgb_callback);
         mpDev->set_frame_callback(rs::stream::depth, depth_callback);
 
-        //Enable fisheye time alignment to motion events
+        // Enable fisheye time alignment to motion events
         mpDev->set_option(rs::option::fisheye_strobe, 1);
-        //Syncronize depth and fisheye frames
+        // Syncronize depth and fisheye frames
         mpDev->set_option(rs::option::fisheye_external_trigger, 1);
-        //Enable fisheye auto exposure
+        // Enable fisheye auto exposure
         mpDev->set_option(rs::option::fisheye_color_auto_exposure , 1);
 
         std::cout << "starting device" << std::endl << std::flush; 
@@ -107,7 +107,8 @@ namespace ark {
         mDepth_intrin = mpDev->get_stream_intrinsics(rs::stream::depth);
         mColor_intrin = mpDev->get_stream_intrinsics(rs::stream::color);
         
-        /*/ <- add/remove * after the first slash to toggle calibration code. This prints camera/IMU intrinsics you can put in intr.y[a]ml
+        /*/ <- add/remove * after the first slash to toggle calibration code.
+        // This prints camera/IMU intrinsics you can put in intr.y[a]ml
         rs::intrinsics fish_intr = mpDev->get_stream_intrinsics(rs::stream::fisheye);
         Eigen::Matrix4f tf_imu_fish;
         rs::motion_intrinsics imu_intr = mpDev->get_motion_intrinsics();
@@ -127,8 +128,8 @@ namespace ark {
                        extr_imu_fisheye.rotation[3], extr_imu_fisheye.rotation[4], extr_imu_fisheye.rotation[5], extr_imu_fisheye.translation[1],
                        extr_imu_fisheye.rotation[6], extr_imu_fisheye.rotation[7], extr_imu_fisheye.rotation[8], extr_imu_fisheye.translation[2],
                        0.0, 0.0, 0.0, 1.0;
-        std::cerr << "T_SC\n";
-        std::cerr << tf_imu_fish.inverse();
+        std::cerr << "T_CS (Please invert for T_SC)\n";
+        std::cerr << tf_imu_fish
         std::cerr << "\nMOTION\n";
 
         std::cerr << "a_max " << 176.0
@@ -154,10 +155,10 @@ namespace ark {
         depth_intrinsics.at<float>(1, 2) = mColor_intrin.ppy;
         depth_intrinsics.at<float>(2, 2) = 1.0f;
 
-        //get rid of IMU data that queued while waiting for first frame
-        //mTimeStamp = mpDev->get_frame_timestamp(rs::stream::fisheye);
-        //std::cout << "going through imu queue" << std::endl << std::flush; 
-        //updateImuToTime(mTimeStamp);
+        // get rid of IMU data that queued while waiting for first frame
+        // mTimeStamp = mpDev->get_frame_timestamp(rs::stream::fisheye);
+        // std::cout << "going through imu queue" << std::endl << std::flush; 
+        // updateImuToTime(mTimeStamp);
         fisheye_queue.clear();
         rgb_queue.clear();
         depth_queue.clear();
@@ -166,18 +167,16 @@ namespace ark {
     }
 
     ZR300Camera::~ZR300Camera() {
-        //Stop the device
+        // Stop the device
         if (mpDev->is_streaming())
             mpDev->stop(rs::source::all_sources);
 
-        //Stop the motion tracker
+        // Stop the motion tracker
         mpDev->disable_motion_tracking();
     }
 
-    void ZR300Camera::update(cv::Mat & xyz_map, cv::Mat & rgb_map, cv::Mat & ir_map, 
-            cv::Mat & fisheye_map, cv::Mat & amp_map, cv::Mat & flag_ma) {
-
-        FrameObject fish,rgb,depth;
+    void ZR300Camera::update(MultiCameraFrame & frame) {
+        FrameObject fish, rgb, depth;
         bool sync_found = false;
 
         while(!sync_found){
@@ -190,31 +189,30 @@ namespace ark {
             while(!depth_queue.try_dequeue(&depth)){
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
-            if(fabs(fish-rgb)<FRAME_SYNC_THRESHOLD && fabs(fish-depth)<FRAME_SYNC_THRESHOLD){
+            if (fabs(fish - rgb) < FRAME_SYNC_THRESHOLD && fabs(fish - depth) < FRAME_SYNC_THRESHOLD) {
                 sync_found=true;
-            }else{
+            } else {
                 //if fisheye queue is ahead of rgb need to wait for new rgb
-                if(fish-rgb>FRAME_SYNC_THRESHOLD){ 
+                if (fish - rgb > FRAME_SYNC_THRESHOLD) {
                     fisheye_queue.enqueue(fish);
                     //check to see if we also need to wait for depth
-                    if(fish-depth<FRAME_SYNC_THRESHOLD)
+                    if (fish - depth < FRAME_SYNC_THRESHOLD)
                         depth_queue.enqueue(depth);
-                }else{ //fisheye queue is not ahead of rgb
+                } else { //fisheye queue is not ahead of rgb
                     //if rgb is ahead of fisheye need to wait for new fisheye
-                    if(rgb-fish>FRAME_SYNC_THRESHOLD){
+                    if (rgb - fish > FRAME_SYNC_THRESHOLD) {
                         rgb_queue.enqueue(rgb);
                         //check if we also need to wait for depth
-                        if(rgb-depth<FRAME_SYNC_THRESHOLD)
+                        if (rgb - depth < FRAME_SYNC_THRESHOLD)
                             depth_queue.enqueue(depth);
-                    }else{ //rgb is not ahead of fisheye
+                    } else { //rgb is not ahead of fisheye
                         //if fisheye is ahead of depth we need to wait for new depth
-                        if(fish-depth>FRAME_SYNC_THRESHOLD){
+                        if (fish - depth > FRAME_SYNC_THRESHOLD) {
                             fisheye_queue.enqueue(fish);
                             //we already know fisheye is not ahead of rgb queue so don't need to wait 
                             rgb_queue.enqueue(rgb);
-                        }
-                        //if depth is ahead of fisheye we need to wait for new fisheye
-                        else if(depth-fish>FRAME_SYNC_THRESHOLD) {
+                        } else if (depth - fish > FRAME_SYNC_THRESHOLD) {
+                            //if depth is ahead of fisheye we need to wait for new fisheye
                             depth_queue.enqueue(depth);
                         }
                         //we already know rgb is NOT ahead of fisheye so we do need to wait for that
@@ -231,16 +229,22 @@ namespace ark {
 
         mTimeStamp = fish.frame->get_timestamp();
 
+        frame.images.resize(3);
+        if (frame.images[0].empty()) frame.images[0] = cv::Mat(REAL_HI, REAL_WID, CV_32FC3);
+        if (frame.images[1].empty()) frame.images[1] = cv::Mat(REAL_HI, REAL_WID, CV_8UC3);
+        if (frame.images[2].empty()) frame.images[2] = cv::Mat(REAL_HI, REAL_WID, CV_8UC1);
+
         // populate RGB image
-        std::memcpy((void*) rgb_map.datastart, rgb_image, REAL_HI * REAL_WID * 3 * sizeof(unsigned char));
+        std::memcpy((void*) frame.images[1].datastart, rgb_image, REAL_HI * REAL_WID * 3 * sizeof(unsigned char));
         // populate FishEye image
-        std::memcpy((void*) fisheye_map.datastart, fish_image, REAL_HI * REAL_WID * sizeof(unsigned char));
+        std::memcpy((void*) frame.images[2].datastart, fish_image, REAL_HI * REAL_WID * sizeof(unsigned char));
 
         // Populate xyzMap
         for (int dy = 0; dy < REAL_HI; ++dy) {
+            cv::Vec3f * ptr = frame.images[0].ptr<cv::Vec3f>(dy);
             for (int dx = 0; dx < REAL_WID; ++dx) {
                 uint16_t depth_value = depth_image[dy * REAL_WID + dx];
-                xyz_map.at<cv::Vec3f>(dy, dx) = deproject(cv::Point2f(dx, dy), depth_intrinsics, depth_value * mDepthScale);
+                ptr[dx] = deproject(cv::Point2f(dx, dy), depth_intrinsics, depth_value * mDepthScale);
             }
         }
 
@@ -251,8 +255,19 @@ namespace ark {
         return true;
     }
 
+    const cv::Mat ZR300Camera::getRGBMap() const
+    {
+        return getFrameImage(1, CV_8UC3);
+        return cv::Mat();
+    }
+
     bool ZR300Camera::hasFishEyeMap() const {
         return true;
+    }
+
+    const cv::Mat ZR300Camera::getFishEyeMap() const
+    {
+        return getFrameImage(2, CV_8UC1);
     }
 
     void ZR300Camera::updateImuToTime(double time) {

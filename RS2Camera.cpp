@@ -60,29 +60,43 @@ namespace ark {
     bool RS2Camera::hasRGBMap() const {
         return useRGBStream;
     }
+    
+    const cv::Mat SR300Camera::getRGBMap() const
+    {
+        return getFrameImage(1, CV_8UC3);
+    }
 
     bool RS2Camera::hasIRMap() const {
         return !useRGBStream;
     }
+    
+    const cv::Mat SR300Camera::getIRMap() const
+    {
+        return getFrameImage(1, CV_8UC1);
+    }
 
-    void RS2Camera::update(cv::Mat & xyz_map, cv::Mat & rgb_map, cv::Mat & ir_map, 
-            cv::Mat & amp_map, cv::Mat & flag_map) {
+    void RS2Camera::update(MultiCameraFrame & frame) {
         rs2::frameset data;
 
         try {
+            frame.images.resize(2);
+
             data = pipe->wait_for_frames();
 
             if (useRGBStream) {
+                if (frame.images[1].empty()) frame.images[0] = cv::Mat(getImageSize(), CV_8UC3);
                 rs2::frame color = data.first(RS2_STREAM_COLOR);
-                memcpy(rgb_map.data, color.get_data(), 3 * width * height);
+                memcpy(frame.images[0].data, color.get_data(), 3 * width * height);
             }
             else {
+                if (frame.images[1].empty()) frame.images[0] = cv::Mat(getImageSize(), CV_8UC1);
                 rs2::frame ir = data.first(RS2_STREAM_INFRARED);
-                memcpy(ir_map.data, ir.get_data(), width * height);
+                memcpy(frame.images[1].data, ir.get_data(), width * height);
             }
 
+            if (frame.images[0].empty()) frame.images[0] = cv::Mat(getImageSize(), CV_32FC3);
             rs2::frame depth = data.first(RS2_STREAM_DEPTH); 
-            project(depth, xyz_map);
+            project(depth, frame.images[0]);
         } catch (std::runtime_error e) {
             // try reconnecting
             badInputFlag = true;
@@ -94,8 +108,6 @@ namespace ark {
             badInputFlag = false;
             return;
         }
-
-
     }
 
     void RS2Camera::project(const rs2::frame depth_frame, cv::Mat & xyz_map) {

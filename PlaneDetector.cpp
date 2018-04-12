@@ -9,20 +9,21 @@ namespace ark {
         return normalMap;
     }
 
-    void PlaneDetector::detect(cv::Mat & image)
+    void PlaneDetector::detect(const MultiCameraFrame & frame)
     {
         planes.clear();
+        if (frame.images.empty()) return;
 
         std::vector<Vec3f> equations;
         std::vector<VecP2iPtr> points;
         std::vector<VecV3fPtr> pointsXYZ;
 
-        util::computeNormalMap(image, normalMap, 4, params->normalResolution, false);
-        detectPlaneHelper(image, normalMap, equations, points, pointsXYZ, params);
+        util::computeNormalMap(frame.images[0], normalMap, 4, params->normalResolution, false);
+        detectPlaneHelper(frame.images[0], normalMap, equations, points, pointsXYZ, params);
 
         for (uint i = 0; i < equations.size(); ++i) {
             FramePlane::Ptr planePtr = std::make_shared<FramePlane>
-                (equations[i], points[i], pointsXYZ[i], image, params);
+                (equations[i], points[i], pointsXYZ[i], frame.images[0], params);
 
             if (planePtr->getSurfArea() > params->planeMinArea) {
                 planes.emplace_back(planePtr);
@@ -32,7 +33,7 @@ namespace ark {
         // done detecting planes, show visualization if debug flag is on
 #ifdef DEBUG
         cv::Mat planeDebugVisual =
-            cv::Mat::zeros(image.size() / params->normalResolution, CV_8UC3);
+            cv::Mat::zeros(frame.images[0].size() / params->normalResolution, CV_8UC3);
 
         for (int i = 0; i < planes.size(); ++i) {
             Vec3b color = util::paletteColor(i);

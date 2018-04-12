@@ -38,7 +38,7 @@ namespace ark {
 
     protected:
         /** Implementation of hand detection algorithm */
-        void detect(cv::Mat & image) override;
+        void detect(const MultiCameraFrame & frame) override;
 
     private:
         /** the plane detector instance */

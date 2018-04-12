@@ -2,7 +2,6 @@
 #include "Version.h"
 
 #include "FrameObject.h"
-#include "Hand.h"
 #include "Visualizer.h"
 #include "Util.h"
 

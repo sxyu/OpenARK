@@ -94,6 +94,16 @@ namespace ark {
     {
         return true;
     }
+    
+    const cv::Mat PMDCamera::getAmpMap() const
+    {
+        return getFrameImage(1, CV_32FC1);
+    }
+    
+    const cv::Mat PMDCamera::getFlagMap() const
+    {
+        return getFrameImage(2, CV_8UC1);
+    }
 
     /***
     Public deconstructor for the PMD depth sensor
@@ -108,9 +118,10 @@ namespace ark {
     /***
     Create xyzMap, zMap, ampMap, and flagMap from sensor input
     ***/
-    void PMDCamera::update(cv::Mat & xyz_map, cv::Mat & rgb_map, cv::Mat & ir_map, cv::Mat & fisheye_map,
-                             cv::Mat & amp_map, cv::Mat & flag_map) 
+    void PMDCamera::update(MultiCameraFrame & frame) 
     {
+        frame.images.resize(3);
+        
         // fill in amp map
         auto res = pmdGetAmplitudes(hnd, amps, numPixels * sizeof(float));
 
@@ -122,7 +133,7 @@ namespace ark {
             return;
         }
 
-        amp_map.data = reinterpret_cast<uchar *>(amps);
+        frame.images[1].data = reinterpret_cast<uchar *>(amps);
 
         // fill in Z coordinates
         auto res = pmdGet3DCoordinates(hnd, dists, 3 * numPixels * sizeof(float)); //store x,y,z coordinates dists (type: float*)
@@ -136,7 +147,7 @@ namespace ark {
             return;
         }
 
-        xyz_map = cv::Mat(xyzMap.size(), xyzMap.type(), dists);
+        frame.images[0] = cv::Mat(xyzMap.size(), xyzMap.type(), dists);
 
         // Flags. Helps with denoising.
         auto flags = new unsigned[ampMap.cols*ampMap.rows];
@@ -150,7 +161,7 @@ namespace ark {
             return;
         }
 
-        flag_map.data = reinterpret_cast<uchar *>(flags);
+        frame.images[2].data = reinterpret_cast<uchar *>(flags);
 
         res = pmdUpdate(hnd);
         if (res != PMD_OK)

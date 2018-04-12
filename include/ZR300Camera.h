@@ -56,17 +56,24 @@ namespace ark {
             int getHeight() const override {
                 return REAL_HI;
             };
+
             /**
              * Returns true if an RGB image is available from this camera.
              * @return true if an RGB image is available from this camera.
              */
             bool hasRGBMap() const override;
 
+            /** Get the current RGB image from this camera (frame index 1) */
+            const cv::Mat getRGBMap() const override;
+
             /**
              * Returns true if a fisheye image is available from this camera.
              * @return true if a fisheye image is available from this camera.
              */
             bool hasFishEyeMap() const override;
+
+            /** Get the current FishEye image from this camera (frame index 2) */
+            const cv::Mat getFishEyeMap() const override;
 
             /**
              * Update the IMU measurment queue up until the given time
@@ -82,8 +89,7 @@ namespace ark {
             const double getTimeStamp() const;
 
         protected:
-            void update(cv::Mat & xyz_map, cv::Mat & rgb_map, cv::Mat & ir_map, 
-                    cv::Mat & fisheye_map, cv::Mat & amp_map, cv::Mat & flag_map);
+            void update(MultiCameraFrame & frame);
 
         private:
 

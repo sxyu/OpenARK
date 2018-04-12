@@ -29,7 +29,7 @@ namespace ark {
 
     protected:
         /** Implementation of plane detection algorithm */
-        void detect(cv::Mat & image) override;
+        void detect(const MultiCameraFrame & frame) override;
 
     private:
         /** stores currently detected planes */

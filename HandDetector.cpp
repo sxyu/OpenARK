@@ -20,12 +20,13 @@ namespace ark {
         return hands;
     }
 
-    void HandDetector::detect(cv::Mat & image)
+    void HandDetector::detect(const MultiCameraFrame & frame)
     {
         hands.clear();
+        if (frame.images.empty())  return;
 
         // 1. initialize
-        const int R = image.rows, C = image.cols;
+        const int R = frame.images[0] .rows, C = frame.images[0].cols;
         cv::Mat floodFillMap(R, C, CV_8U);
 
         const Vec3f * ptr;
@@ -34,7 +35,7 @@ namespace ark {
         for (int r = 0; r < R; ++r)
         {
             visPtr = floodFillMap.ptr<uchar>(r);
-            ptr = image.ptr<Vec3f>(r);
+            ptr = frame.images[0].ptr<Vec3f>(r);
             for (int c = 0; c < C; ++c)
             {
                 visPtr[c] = ptr[c][2] > 0 ? 255 : 0;
@@ -44,11 +45,11 @@ namespace ark {
         // 2. eliminate large planes
 
         if (planeDetector) {
-            if (!externalPlaneDetector) planeDetector->update(image);
+            if (!externalPlaneDetector) planeDetector->update(frame.images[0]);
             const std::vector<FramePlane::Ptr> & planes = planeDetector->getPlanes();
             if (planes.size()) {
                 for (FramePlane::Ptr plane : planes) {
-                    util::removePlane<uchar>(image, floodFillMap, plane->equation,
+                    util::removePlane<uchar>(frame.images[0], floodFillMap, plane->equation,
                         params->handPlaneMinNorm);
                 }
             }
@@ -74,14 +75,14 @@ namespace ark {
 
         for (int r = 0; r < R; r += params->handClusterInterval)
         {
-            ptr = image.ptr<Vec3f>(r);
+            ptr = frame.images[0].ptr<Vec3f>(r);
             visPtr = floodFillMap.ptr<uchar>(r);
 
             for (int c = 0; c < C; c += params->handClusterInterval)
             {
                 if (visPtr[c] > 0 && ptr[c][2] > 0)
                 {
-                    int points_in_comp = util::floodFill(image, Point2i(c, r),
+                    int points_in_comp = util::floodFill(frame.images[0], Point2i(c, r),
                         params->handClusterMaxDistance,
                         &allIJPoints, &allXYZPoints, nullptr, 1, 6,
                         params->handClusterMaxDistance * 8, &floodFillMap);
@@ -94,7 +95,7 @@ namespace ark {
                         // 4. for each cluster, test if hand
 
                         // if matching required conditions, construct 3D object
-                        Hand::Ptr handPtr = std::make_shared<Hand>(ijPoints, xyzPoints, image,
+                        Hand::Ptr handPtr = std::make_shared<Hand>(ijPoints, xyzPoints, frame.images[0],
                             params, false, points_in_comp);
 
                         if (ijPoints->size() < CLUSTER_MIN_POINTS) continue;
