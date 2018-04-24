@@ -1,8 +1,7 @@
 # - Find DLib library
 # Find the native DLib includes and library
 # This module defines
-#  DLIB_INCLUDE_DIRS, where to find ceres.h, Set when
-#                      DLIB_INCLUDE_DIR is found.
+#  DLIB_INCLUDE_DIRS, where to find DUtils/, DVision/, etc.
 #  DLIB_LIBRARIES, libraries to link against to use DLib.
 #  DLIB_ROOT_DIR, The base directory to search for DLib.
 #                  This can also be an environment variable.
