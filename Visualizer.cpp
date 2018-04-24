@@ -4,7 +4,7 @@
 #include "Util.h"
 
 namespace ark {
-    pcl::visualization::PCLVisualizer * Visualizer::viewer = nullptr;
+    pcl::visualization::PCLVisualizer::Ptr Visualizer::viewer = nullptr;
 
     /***
     Maps matrix values to [0, 255] for viewing
@@ -221,6 +221,21 @@ namespace ark {
         }
     }
 
+    int Visualizer::createPCLViewport(double xmin, double ymin, double xmax, double ymax)
+    {
+        initPCLViewer();
+        int id;
+        viewer->createViewPort(xmin, ymin, xmax, ymax, id);
+        return id;
+    }
+
+    pcl::visualization::PCLVisualizer::Ptr Visualizer::getPCLVisualizer()
+    {
+        initPCLViewer();
+        return viewer;
+        return pcl::visualization::PCLVisualizer::Ptr();
+    }
+
     void Visualizer::visulizePolygonMesh(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud)
     {
         if (cloud.get()->width == 0)
@@ -279,7 +294,7 @@ namespace ark {
 
     bool Visualizer::initPCLViewer() {
         if (viewer != nullptr) return false;
-        viewer = new pcl::visualization::PCLVisualizer("Point Cloud");
+        viewer = boost::make_shared<pcl::visualization::PCLVisualizer>("3D Viewport");
         return viewer != nullptr;
     }
 }

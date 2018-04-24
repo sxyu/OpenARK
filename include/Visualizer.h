@@ -87,6 +87,14 @@ namespace ark {
         */
         static void visualizePlanePoints(cv::Mat &input_mat, std::vector<Point2i> indicies);
 
+        /** Create a viewport within the given bounds (each coordinate should be within the range [0,1]).
+         * @return the ID of the viewport created
+         */
+        static int createPCLViewport(double xmin, double ymin, double xmax, double ymax);
+
+        /** Get the internal PCL visualizer */
+        static pcl::visualization::PCLVisualizer::Ptr getPCLVisualizer();
+
     private:
         /**
          * Initializes & opens the PCL visualizer
@@ -103,16 +111,8 @@ namespace ark {
         static void visualizeMatrix(const cv::Mat & input, cv::Mat & output);
 
         /**
-        * Visualization for a depth map matrix (i,j,z).
-        * @param [in] depthMap matrix to be visualized
-        * @return a CV_8UC3 representation of the input matrix
-        */
-
-
-        /**
         * PCL point cloud viewer
         */
-        static pcl::visualization::PCLVisualizer * viewer;
-
+        static pcl::visualization::PCLVisualizer::Ptr viewer;
     };
 }

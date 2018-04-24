@@ -11,21 +11,30 @@ namespace ark {
     namespace util
     {
         /**
-        * Splits a string into components based on delimeter
+        * Splits a string into components based on a delimeter
         * @param string_in string to split
         * @param delimeters c_str of delimeters to split at
         * @return vector of string components
         */
-        std::vector<std::string> split(char * string_in, char const * delimeters = " ");
+        std::vector<std::string> split(const char * string_in, char const * delimeters = " ");
 
         /**
-         * automatically pluralize a string (add 's') base on a given quantity.
+         * Automatically pluralize a string (add 's') base on a given quantity.
          * @param str [in] the string (will not be modified)
          * @param num the quantity (adds 's' if this is not 1)
          * @return pluralized string
          */
         template<class T>
         std::string pluralize(std::string str, T num);
+
+        /** Trims whitespaces (space, newline, etc.) in-place from the left end of the string */
+        void ltrim(std::string & s);
+
+        /** Trims whitespaces (space, newline, etc.) in-place from the right end of the string */
+        void rtrim(std::string & s);
+
+        /** Trims whitespaces (space, newline, etc.) in-place from both ends of the string */
+        void trim(std::string & s);
 
         /**
         * Generates a random RGB color.
@@ -34,7 +43,8 @@ namespace ark {
         Vec3b randomColor();
 
         /**
-        * Get the RGB color at index 'index' of the default palette
+        * Get the RGB color at index 'index' of the built-in palette
+        * Used to map integers to colors.
         * @param color_index index of color
         * @return RGB color in Vec3b format
         */
@@ -59,6 +69,42 @@ namespace ark {
         T euclideanDistance(const cv::Vec<T, 3> & pt1, const cv::Vec<T, 3> & pt2);
 
         /**
+        * Compute the norm between a point and any point on a  line
+        * @param v the point
+        * @param a, b two points on the line
+        * @param cv_norm_type type of norm to use (cv::NORM_XYZ); defaults to square of L2
+        */
+        template<class T>
+        float pointLineNorm(const cv::Point_<T> & p, const cv::Point_<T> & a, const cv::Point_<T> & b, int cv_norm_type = cv::NORM_L2SQR);
+
+        /**
+        * Compute the norm between a point and any point on a line
+        * @param v the point
+        * @param a, b two points on the line
+        * @param cv_norm_type type of norm to use (cv::NORM_XYZ); defaults to square of L2
+        */
+        template<class T>
+        T pointLineNorm(const cv::Vec<T, 3> & p, const cv::Vec<T, 3> & a, const cv::Vec<T, 3> & b,  int cv_norm_type = cv::NORM_L2SQR);
+
+        /**
+        * Compute the shortest norm between a point and any point on a line segment
+        * @param v the point
+        * @param a, b end points of the line segment
+        * @param cv_norm_type type of norm to use (cv::NORM_XYZ); defaults to square of L2
+        */
+        template<class T>
+        float pointLineSegmentNorm(const cv::Point_<T> & p, const cv::Point_<T> & a, const cv::Point_<T> & b, int cv_norm_type = cv::NORM_L2SQR);
+
+        /*
+        * Compute the shortest norm between a point and any point on a line segment
+        * @param v the point
+        * @param a, b end points of the line segment
+        * @param cv_norm_type type of norm to use (cv::NORM_XYZ); defaults to square of L2
+        */
+        template<class T>
+        T pointLineSegmentNorm(const cv::Vec<T, 3> & p, const cv::Vec<T, 3> & a, const cv::Vec<T, 3> & b, int cv_norm_type = cv::NORM_L2SQR);
+
+        /**
         * Compute the closest distance between a point and a plane
         * Where the plane is defined as: ax + by - z + c = 0
         * @param pt the point
@@ -77,20 +123,20 @@ namespace ark {
         template<class T> T pointPlaneDistance(const cv::Vec<T, 3> & pt, T a, T b, T c);
 
         /**
-        * Compute the euclidean norm between a point and a plane
+        * Compute the L2SQR norm (distance squared) between a point and a plane
         * Where the plane is defined as: ax + by - z + c = 0
         * @param pt the point
         * @param eqn equation of plane in form: [a, b, c]
-        * @return euclidean norm in m^2
+        * @return L2SQR norm
         */
         template<class T> T pointPlaneNorm(const cv::Vec<T, 3> & pt, const cv::Vec<T, 3> & eqn);
 
         /**
-        * Compute the euclidean norm (distance squared) between a point and a plane
+        * Compute the L2SQR norm (distance squared) between a point and a plane
         * Where the plane is defined as: ax + by - z + c = 0
         * @param pt the point
         * @param a, b, c parameters of plane
-        * @return euclidean norm in m^2
+        * @return L2SQR norm in m^2
         */
         template<class T> T pointPlaneNorm(const cv::Vec<T, 3> & pt, T a, T b, T c);
 
@@ -174,7 +220,7 @@ namespace ark {
         /**
           * Perform RANSAC-based robust plane regression on a set of points
           * @param points [in] vector of 3D points (must contain at least 3 points)
-          * @param thresh maximum euclidean norm (r^2) from a point for consideration as an inlier
+          * @param thresh maximum L2SQR norm (r^2) from a point for consideration as an inlier
           * @param iterations number of RANSAC iterations
           * @param num_points number of input points to use (min 3). By default, uses all.
           * @return best-fitting plane through the given data points, in the form 
@@ -225,8 +271,8 @@ namespace ark {
          * @param thresh maximum euclidean distance allowed between neighbors
          * @param [out] output_ij_points optionally, pointer to a vector for storing ij coords of the points in the component.
          * @param [out] output_xyz_points optionally, pointer to a vector for storing xyz coords of the points in the component.
-         * @param [out] output_mask optional output matrix for storing points visited by the floodfill (set to NULL to disable)
-
+         * @param [out] output_mask optional output matrix of type CV_32FC3 for storing points visited by the floodfill (set to NULL to disable)
+         *                          if empty, a new Mat with the same size as xyz_map and type CV_32FC3 is created.
          * @param interval1 interval to adjacent points (e.g. if 2, adjacent points are (-2, 0), (0, 2), etc.)
          * @param interval2 additional interval to adjacent points (0 = not used), only works for up/down fill
          * @param interval2_thresh distance theshold for interval2
@@ -281,52 +327,62 @@ namespace ark {
         Vec3f normalize(const Vec3f & vec);
 
         /**
-         * Compute the magnitude of a point.
+         * Compute the magnitude of a point. Equivalent to util::norm(P, cv::NORM_L2).
          * @param pt input point
          * @return magnitude of point
          */
         template <class T>
-        double magnitude(cv::Point_<T> pt);
+        double magnitude(const cv::Point_<T> & pt);
 
         /**
-         * Compute the magnitude of a point.
+         * Compute the magnitude of a point. Equivalent to util::norm(P, cv::NORM_L2).
          * @param pt input point
          * @return magnitude of point
          */
         template <class T>
-        double magnitude(cv::Point3_<T> pt);
+        double magnitude(const cv::Point3_<T> & pt);
 
         /**
-         * Compute the magnitude of a point.
+         * Compute the magnitude of a point. Equivalent to util::norm(P, cv::NORM_L2).
          * @param pt input point
          * @return magnitude of point
          */
         template <class T, int n>
-        double magnitude(cv::Vec<T, n> pt);
+        double magnitude(const cv::Vec<T, n> & pt);
 
         /**
-         * Compute the L2 norm of a point.
+         * Compute the magnitude of a point. Equivalent to util::norm(P, cv::NORM_L2).
          * @param pt input point
+         * @return magnitude of point
+         */
+        template <> double magnitude<float, 3>(const cv::Vec3f & pt);
+
+        /**
+         * Compute the norm of a vector.
+         * @param pt input point
+         * @param cv_norm_type type of norm to use (cv::NORM_XYZ). default is square of L2.
          * @return norm of point
          */
         template <class T>
-        double norm(cv::Point_<T> pt);
+        double norm(const cv::Point_<T> & pt, int cv_norm_type = cv::NORM_L2SQR);
 
         /**
-         * Compute the L2 norm of a point.
+         * Compute the norm of a vector.
          * @param pt input point
+         * @param cv_norm_type type of norm to use (cv::NORM_XYZ). default is square of L2.
          * @return norm of point
          */
         template <class T>
-        double norm(cv::Point3_<T> pt);
+        double norm(const cv::Point3_<T> & pt, int cv_norm_type = cv::NORM_L2SQR);
 
         /**
-         * Compute the L2 norm of a vector.
+         * Compute the norm of a vector.
          * @param pt input point
+         * @param cv_norm_type type of norm to use (cv::NORM_XYZ). default is square of L2.
          * @return norm of point
          */
         template <class T, int n>
-        double norm(cv::Vec<T, n> pt);
+        double norm(const cv::Vec<T, n> & pt, int cv_norm_type = cv::NORM_L2SQR);
 
         /**
          * Compute the angle between two 3D vectors.
@@ -439,7 +495,7 @@ namespace ark {
         * outputs the indices of the furthest points and returns the distance between them.
         * @param[in] points the input points
         * @param[out] a, b outputs the indices of the furthest points
-        * @return 2D euclidean norm (distance^2) between the two points
+        * @return 2D L2SQR norm (distance^2) between the two points
         */
         double diameter(const std::vector<cv::Point> & points, int & a, int & b);
 
