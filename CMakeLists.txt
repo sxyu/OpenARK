@@ -47,12 +47,15 @@ if ( CMAKE_COMPILER_IS_GNUCXX )
     set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated -Wno-deprecated-declarations -O3 -g" )
 endif ( CMAKE_COMPILER_IS_GNUCXX )
 
+# if using the OpenARK dependency pack
 if( ARK_DEPENDENCY_DIR )
     message(STATUS "Using OpenARK Dependency Directory: ${ARK_DEPENDENCY_DIR}")
-    # use included partial boost
+    # use included Boost
     set(BOOST_LIBRARYDIR "${ARK_DEPENDENCY_DIR}/lib")
     set(BOOST_INCLUDEDIR "${ARK_DEPENDENCY_DIR}/include")
     set(Boost_NO_SYSTEM_PATHS  ON)
+    # use included VTK
+    set(VTK_DIR "${ARK_DEPENDENCY_DIR}/VTK/lib/cmake/vtk-7.0/")
 endif( ARK_DEPENDENCY_DIR )
 
 # find Boost
@@ -79,7 +82,7 @@ if(BOOST_FOUND)
 endif(BOOST_FOUND)
 
 # require VTK
-find_package( VTK REQUIRED )
+find_package( VTK NO_MODULE REQUIRED )
 if(VTK_FOUND)
    message(STATUS "Found VTK Libraries: ${VTK_LIBRARIES}")
 endif(VTK_FOUND)
@@ -208,13 +211,11 @@ set(
   ${VTK_LIBRARIES}
 )
 
-add_definitions(
-  ${PCL_DEFINITIONS}
-  ${BOOST_DEFINITIONS}
-)
-foreach(DEFINITION ${PCL_DEFINITIONS})
-  set(TARGET_COMPILE_FLAGS "${TARGET_COMPILE_FLAGS} ${DEFINITION}")
-endforeach()
+add_definitions( ${PCL_DEFINITIONS} ${BOOST_DEFINITIONS} )
+
+foreach( DEFINITION ${VTK_DEFINITIONS} )
+  add_definitions( "-D${DEFINITION}" )
+endforeach( DEFINITION )
 
 set(
   SOURCES 
@@ -337,13 +338,11 @@ if(${BUILD_DEMOS})
     add_executable( ${HAND_DEMO_NAME} main.cpp )
     target_link_libraries( ${HAND_DEMO_NAME} ${DEPENDENCIES} ${LIBRARY_NAME} )
     set_target_properties( ${HAND_DEMO_NAME} PROPERTIES OUTPUT_NAME ${HAND_DEMO_NAME})
-    set_target_properties( ${HAND_DEMO_NAME} PROPERTIES COMPILE_FLAGS ${TARGET_COMPILE_FLAGS})
     target_include_directories( ${HAND_DEMO_NAME} PRIVATE ${INCLUDE_DIR} )
     if( REALSENSE_FOUND )
         add_executable( ${SLAM_DEMO_NAME} SlamDemo.cpp )
         target_link_libraries( ${SLAM_DEMO_NAME} ${DEPENDENCIES} ${LIBRARY_NAME} )
         set_target_properties( ${SLAM_DEMO_NAME} PROPERTIES OUTPUT_NAME ${SLAM_DEMO_NAME})
-        set_target_properties( ${SLAM_DEMO_NAME} PROPERTIES COMPILE_FLAGS ${TARGET_COMPILE_FLAGS})
         target_include_directories( ${SLAM_DEMO_NAME} PRIVATE ${INCLUDE_DIR} )
         set_target_properties( ${SLAM_DEMO_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
     endif( REALSENSE_FOUND )
@@ -370,9 +369,6 @@ if( ${BUILD_TESTS} )
   set( HEADERS ${HEADERS} "OpenARK_test/TestCamera.h" )
   
   target_link_libraries( ${TEST_NAME} ${DEPENDENCIES} ${LIBRARY_NAME} )
-  set_target_properties( ${TEST_NAME} PROPERTIES
-    COMPILE_FLAGS ${TARGET_COMPILE_FLAGS} )
-    
   target_include_directories( ${TEST_NAME} PRIVATE ${INCLUDE_DIR} )
 endif( ${BUILD_TESTS} )
 
