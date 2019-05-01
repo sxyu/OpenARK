@@ -27,8 +27,8 @@ namespace ark {
 
 		// Load face models
 		facemark = cv::face::FacemarkLBF::create();
-		facemark->loadModel("C:\\dev\\OpenARK_dataset\\lbfmodel.yaml");
-		faceDetector.load("C:\\opencv\\data\\haarcascades\\haarcascade_frontalface_alt2.xml");
+		//facemark->loadModel("C:\\dev\\OpenARK_dataset\\lbfmodel.yaml");
+		//faceDetector.load("C:\\opencv\\data\\haarcascades\\haarcascade_frontalface_alt2.xml");
 
 		face_3D_model_points.push_back(cv::Point3d(0.0f, 0.0f, 0.0f));               // Nose tip
 		face_3D_model_points.push_back(cv::Point3d(0.0f, -330.0f, -65.0f));          // Chin
@@ -81,7 +81,7 @@ namespace ark {
 		}
 		else {
 			std::cout << "Tracking" << std::endl;
-			ava->fitTrack(humanCloud);
+			ava->fit(humanCloud, true);
 		}
 
 		begin_tracking = true;

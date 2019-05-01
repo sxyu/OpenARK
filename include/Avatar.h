@@ -9,63 +9,11 @@
 #include <pcl/filters/random_sample.h>
 
 #include "Visualizer.h"
+#include "GaussianMixture.h"
 
 namespace ark {
-    // TODO: refactor this file
-    /** Gaussian Mixture Model */
-    class GaussianMixture {        
-    public:
-        /** load Gaussian Mixture parameters from 'path' */
-        void load(const std::string & path);
-
-        /** get number of Gaussian mixture components */
-        inline int numComponents() const { return nComps; };
-
-        template<class T>
-        /** Compute PDF at 'input' */
-        T pdf(const Eigen::Matrix<T, Eigen::Dynamic, 1> & x) const {
-            T prob = 0.0;
-            typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> mat_t;
-            for (int i = 0; i < nComps; ++i) {
-                Eigen::TriangularView<Eigen::MatrixXd, Eigen::Lower> L(cov_cho[i]);
-                auto residual = (L.transpose() * (x - mean.row(i).transpose()));
-                prob += consts[i] * ceres::exp(-0.5 * residual.squaredNorm());
-            }
-            return prob;
-        }
-
-        template<class T>
-        /** Compute Ceres residual vector (squaredNorm of output vector is equal to min_i -log(c_i pdf_i(x))) */
-        Eigen::Matrix<T, Eigen::Dynamic, 1> residual(const Eigen::Matrix<T, Eigen::Dynamic, 1> & x) {
-            T bestProb = T(0);
-            typedef Eigen::Matrix<T, Eigen::Dynamic, 1> vec_t;
-            typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> mat_t;
-            vec_t ans;
-            for (int i = 0; i < nComps; ++i) {
-                Eigen::TriangularView<Eigen::MatrixXd, Eigen::Lower> L(cov_cho[i]);
-                vec_t residual(nDims + 1);
-                residual[nDims] = T(0);
-                residual.head(nDims) = L.transpose() * (x - mean.row(i).transpose()) * sqrt(0.5);
-                T p = residual.squaredNorm() - T(consts_log[i]);
-                if (p < bestProb || !i) {
-                    bestProb = p;
-                    residual[nDims] = T(sqrt(-consts_log[i]));
-                    ans = residual;
-                }
-            }
-            return ans;
-        }
-    private:
-        int nComps, nDims;
-        Eigen::VectorXd weight;
-        Eigen::MatrixXd mean;
-        std::vector<Eigen::MatrixXd> cov;
-
-        // leading constants
-        Eigen::VectorXd consts, consts_log;
-        // cholesky decomposition of inverse: cov^-1 = cov_cho * cov_cho^T
-        std::vector<Eigen::MatrixXd> cov_cho;
-    };
+    /** UKF Model for HumanAvatar (definition is in .cpp to improve compilation time) */
+    struct HumanAvatarUKFModel;
 
     /** Represents a humanoid avatar */
     class HumanAvatar {
@@ -152,13 +100,16 @@ namespace ark {
           * (ith index is relative weight of ith shape key a.k.a. blendshape;
           *  total size is numKeys()) */
         double * w() { return _w; }
+        const double * w() const { return _w; }
 
         /** Get the avatar's bone rotation parameter vector (stores quaternions: x y z w)
           * (first 4 indices are root rotation quaternion, total size is numJoints() * 4) */
         double * r() { return _r; }
+        const double * r() const { return _r; }
 
         /** Get the avatar's global position (length 3) */
         double * p() { return _p; }
+        const double * p() const { return _p; }
 
         /** Compute the avatar's SMPL pose parameters (Rodrigues angles) */
         Eigen::VectorXd smplParams() const;
@@ -166,7 +117,7 @@ namespace ark {
         // utility functions for modifying the pose
 
         /* Get global position of the skeleton's center */
-        Eigen::Map<Eigen::Vector3d> getBasePosition();
+        Eigen::Map<Eigen::Vector3d> getCenterPosition();
 
         /** Get the vector with the direction and length length of the bone ending at a joint,
           * before any deformations were applied.
@@ -458,31 +409,18 @@ namespace ark {
         // SECTION Ceres-solver optimization
 
         /** Fit avatar's pose and shape to the given point cloud */
-        void fit(const EigenCloud_T & data_cloud);
-
-		void fitTrack(const EigenCloud_T & data_cloud);
+        void fit(const EigenCloud_T & data_cloud, bool track = false);
 
         /** Fit avatar's pose and shape to the given point cloud. Please use 'alignToJoints' to initialize before fitting. */
         template<class T>
-        void fit(const boost::shared_ptr<pcl::PointCloud<T> > & cloud) {
+        void fit(const boost::shared_ptr<pcl::PointCloud<T> > & cloud, bool track = false) {
             // store point cloud in Eigen format
             EigenCloud_T dataCloud(cloud->points.size(), 3);
             for (size_t i = 0; i < cloud->points.size(); ++i) {
                 dataCloud.row(i) = cloud->points[i].getVector3fMap().cast<double>();
             }
-            fit(dataCloud);
+            fit(dataCloud, track);
         }
-
-		template<class T>
-        /** Track avatar's pose and shape given a new point cloud. Please use 'setJointsPrior' to update the joints prior before calling this. */
-		void fitTrack(const boost::shared_ptr<pcl::PointCloud<T> > & cloud) {
-			// store point cloud in Eigen format
-			EigenCloud_T dataCloud(cloud->points.size(), 3);
-			for (size_t i = 0; i < cloud->points.size(); ++i) {
-				dataCloud.row(i) = cloud->points[i].getVector3fMap().cast<double>();
-			}
-			fitTrack(dataCloud);
-		}
 
         /** Fit avatar's pose only. Please use 'alignToJoints' to initialize before fitting. */
         void fitPose(const EigenCloud_T & data_cloud, int max_iter = 8, int num_subiter = 6,
@@ -504,6 +442,7 @@ namespace ark {
          */
         void visualize(pcl::visualization::PCLVisualizer::Ptr & viewer = Visualizer::getPCLVisualizer(),
                        std::string pcl_prefix = "", int viewport = 0) const;
+
     private:
 
         /** Assign bone/joint weights to each vertex based on distance
@@ -515,7 +454,7 @@ namespace ark {
         /** Transform a point in initial posture space to a joint's transformed posture space,
           * given computer position, transform vectors _pt, _cache */
         template<class T, class VecT_t>
-        Eigen::Matrix<T, 3, 1> inline _toJointSpace(JointType joint_id, const VecT_t & vec, T * _pt, T * _cache) {
+        Eigen::Matrix<T, 3, 1> inline _toJointSpace(JointType joint_id, const VecT_t & vec, T * _pt, T * _cache) const {
             return Eigen::Map<Eigen::Matrix<T, 3, 3> >(_cache + joint_id * NUM_ROT_MAT_PARAMS) * vec
                  + Eigen::Map<const Eigen::Matrix<T, 3, 1>> (_pt + joint_id * NUM_POS_PARAMS);
         }
@@ -524,11 +463,15 @@ namespace ark {
           * (using avatar's parameter vectors) */
         Eigen::Vector3d toJointSpace(JointType joint_id, const Eigen::Vector3d & vec);
 
-        /** propagate local transforms (parameter vectors _r, _s, _p)
-          * to global space transforms (_pt, _rt). Assumes joints are topologically sorted */
+        /** Propagate local transforms (parameter vectors _r, _p, _w)
+          * to global space transforms (_pt, _cache). Assumes joints are topologically sorted.
+          * _pb is base joint position after shapekeys
+          * _pt is global pos of each joint (output)
+          * _rt, _cache are the global rotation of each joint, in quaternion, rot mat format resp. (output)
+          */
         template<class T>
-        void _propagateJointTransforms(const T * const  _r, const T * const _p, const T * const _w, T * _pb,
-                                       T * _pt, T * _rt, T * _cache) {
+        void _propagateJointTransforms(const T * const  _r, const T * const _p, const T * const _w,
+                                       T * _pb, T * _pt, T * _rt, T * _cache) const {
             typedef Eigen::Map<const Eigen::Matrix<T, 2, 1>> const_vec2map;
             typedef Eigen::Matrix<T, 3, 1> vec_t;
             typedef Eigen::Map<vec_t> vecmap;
@@ -557,7 +500,7 @@ namespace ark {
             }
 
             for (size_t jid = 1; jid < joints.size(); ++jid) {
-                Joint::Ptr & joint = joints[jid];
+                const Joint::Ptr & joint = joints[jid];
                 JointType parID = joint->parent->type;
 
                 const size_t ROT_IDX = jid * NUM_ROT_PARAMS, POS_IDX = jid * NUM_POS_PARAMS;
@@ -598,7 +541,7 @@ namespace ark {
         // section MODEL PARAMETERS
 
         /** _w: shape key weights, _r : rotations, _p : global position */
-        double * _w, *_r, * _rr, _p[3];
+        double * _w, * _r, * _rr, _p[3];
 
         // internal parameter storage
 
@@ -647,5 +590,6 @@ public: // debug: public to allow displaying pose prior in PCL viewer
 private:
 
         friend struct Joint;
+        friend struct HumanAvatarUKFModel;
     };
 }

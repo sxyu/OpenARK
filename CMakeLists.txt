@@ -164,6 +164,8 @@ set(
   ${INCLUDE_DIR}/HumanDetector.h
   ${INCLUDE_DIR}/HumanBody.h
   ${INCLUDE_DIR}/Avatar.h
+  ${INCLUDE_DIR}/GaussianMixture.h
+  ${INCLUDE_DIR}/UKF.h
   ${INCLUDE_DIR}/nanoflann.hpp
   stdafx.h
 )

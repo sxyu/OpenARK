@@ -80,3 +80,6 @@
 
 // nanoflann
 #include <nanoflann.hpp>
+
+// OpenARK (for faster compile)
+#include "UKF.h"
